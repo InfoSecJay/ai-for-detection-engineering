@@ -1,0 +1,5 @@
+# Internal project files
+docs/
+
+# Claude Code
+.claude/
