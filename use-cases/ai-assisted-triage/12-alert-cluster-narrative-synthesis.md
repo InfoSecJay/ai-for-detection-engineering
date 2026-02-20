@@ -31,6 +31,7 @@ The synthesis step — taking structured but disconnected alert records and prod
   - Elastic: EQL sequence rules, ESQL aggregation rules, or custom correlation rules using `kibana.alert.group.id`
   - Splunk: Correlation searches in Enterprise Security, `stats` by entity over time windows
   - Sentinel: Fusion rules, scheduled analytics with entity mapping, incident grouping policies
+  - See [Correlation Rule Framework](../../concepts/correlation-rule-framework.md) for a production-ready multi-tier ES|QL correlation rule set that produces structured alert clusters optimized for LLM narrative synthesis
 - **Entity extraction and normalization:** Alerts must contain normalized entity fields (`host.name`, `user.name`, `process.name`, `source.ip`) so the SIEM can correlate by shared entities. This is a field parsing prerequisite.
 - **Alert enrichment:** Each alert in the cluster should already be enriched with available context (asset criticality, user role, threat intel). Enrichment is a SOAR playbook step, not an AI step.
 - **Chronological ordering:** Alerts must have reliable timestamps for the LLM to reconstruct the activity sequence. Clock synchronization across data sources is a data engineering prerequisite.

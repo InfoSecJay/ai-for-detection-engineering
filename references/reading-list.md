@@ -53,6 +53,28 @@ These represent vendor viewpoints — read critically, but they contain useful a
 
 ---
 
+## Alert Correlation & Risk-Based Alerting
+
+Deep-dive references on correlation rule architecture, weighted risk scoring, and multi-signal detection patterns. See also [Alert Correlation Patterns](../concepts/alert-correlation-patterns.md) for the full survey.
+
+| Resource | Description |
+|---|---|
+| **Splunk Guide to Risk-Based Alerting** | The definitive guide to Splunk's RBA architecture -- risk score formulas, risk modifiers, risk incident rules, and the two-layer (risk event + risk notable) design pattern. The reference implementation for weighted scoring models in detection engineering. [splunk.com/blog](https://www.splunk.com/en_us/blog/security/the-new-improved-splunk-guide-to-risk-based-alerting.html) |
+| **Splunk RBA: How Risk Scores Work** | Technical documentation on risk score calculation, the `(impact * confidence) / 100` formula, risk modifiers, and risk incident rule configuration. [help.splunk.com](https://help.splunk.com/en/splunk-enterprise-security-7/risk-based-alerting/7.3/introduction/how-risk-scores-work-in-splunk-enterprise-security) |
+| **Correlation-Based Detection Rules in Cybersecurity (Andrey Pautov)** | Practitioner analysis of correlation rule types -- from atomic to behavioral -- covering temporal windowing, sequential correlation, and the relationship between building blocks and correlation layers. [medium.com](https://medium.com/@1200km/correlation-based-detection-rules-in-cybersecurity-from-atomic-events-to-behavioral-insight-1b3df31597bb) |
+| **Unraveling SIEM Correlation Techniques (Jack Naglieri / Panther)** | Comprehensive breakdown of SIEM correlation patterns: threshold, sequence, temporal, and statistical. Covers Panther's Python-based approach to correlation rule engineering. [panther.com/blog](https://panther.com/blog/unraveling-siem-correlation-techniques) |
+| **Microsoft Sentinel Fusion Engine Documentation** | Technical reference for Sentinel's ML-based multi-stage attack detection. Covers how Fusion automatically correlates low-fidelity alerts into high-severity incidents. [learn.microsoft.com](https://learn.microsoft.com/en-us/azure/sentinel/fusion) |
+| **Microsoft Sentinel UEBA Behaviors Layer** | Introduction to Sentinel's AI-based UEBA capability that provides normalized behavioral building blocks for detection rules and investigation. [techcommunity.microsoft.com](https://techcommunity.microsoft.com/blog/microsoftsentinelblog/turn-complexity-into-clarity-introducing-the-new-ueba-behaviors-layer-in-microso/4484493) |
+| **Elastic ES\|QL New Features (2025)** | Coverage of LOOKUP JOIN (GA), Cross-Cluster Search, INLINE STATS, and resilience features in ES\|QL -- key capabilities for building correlation rules in Elastic. [elastic.co/search-labs](https://www.elastic.co/search-labs/blog/esql-elasticsearch-8-19-9-1) |
+| **Elastic Security Detection Engineering Capabilities** | Overview of all rule types in Elastic Security (EQL sequences, threshold, ML, building blocks, ES\|QL) and how they combine for multi-layer detection. [elastic.co/blog](https://www.elastic.co/blog/elastic-security-detection-engineering) |
+| **Anvilogic Correlated Threat Scenarios** | Anvilogic's approach to visual correlation rule building -- threading signals across kill chain stages on a drag-and-drop canvas, mapped to ATT&CK. [anvilogic.com](https://www.anvilogic.com/correlated-threat-scenarios) |
+| **Panther pypanther Framework** | Panther's Python-based detection framework with class inheritance, programmatic overrides, and testable correlation rules using `MinMatchCount`. [panther.com/blog](https://panther.com/blog/introducing-pypanther-the-future-of-code-driven-detection-and-response) |
+| **Anvilogic 2025 State of Detection Engineering Report** | Industry survey on detection engineering maturity, AI adoption (88% expect major AI integration within 3 years), and the state of correlation and coverage practices. [anvilogic.com/report](https://www.anvilogic.com/report/2025-state-of-detection-engineering) |
+| **Elastic 2025 State of Detection Engineering** | Elastic's analysis of detection engineering trends -- DaC adoption, CI/CD validation, cross-integration correlation, and structured maturity models. [elastic.co/security-labs](https://www.elastic.co/security-labs/state-of-detection-engineering-at-elastic-2025) |
+| **KillChainGraph: ML Framework for Predicting ATT&CK Techniques (2025)** | Academic research on phase-aware ML models that align ATT&CK techniques to kill chain phases, achieving 97-99% F1-scores for adversarial technique prediction. Relevant for predictive correlation rule design. [arxiv.org](https://arxiv.org/html/2508.18230v1) |
+
+---
+
 ## Data Quality & SOC Process
 
 | Resource | Description |
@@ -68,5 +90,6 @@ These represent vendor viewpoints — read critically, but they contain useful a
 - **Starting point**: Begin with the two Anton Chuvakin posts. They frame the entire problem space.
 - **For prerequisites**: OWASP Agentic AI Top 10 and NIST Cyber AI Profile address risk management.
 - **For detection engineering**: Sigma specification, Elastic detection rules docs, and ECS/CIM references are the operational foundations.
+- **For alert correlation and risk-based alerting**: Start with the Splunk RBA Guide and Andrey Pautov's correlation rules post. Then review platform-specific documentation for your SIEM. The [Alert Correlation Patterns](../concepts/alert-correlation-patterns.md) concept document synthesizes cross-platform patterns.
 - **For vendor context**: Read the vendor perspectives to understand what products claim to do, then compare against the prerequisites and data requirements documented in this repo.
 - **For AI risk**: MITRE ATLAS covers threats to AI systems. OWASP Agentic AI Top 10 covers risks from AI agents.

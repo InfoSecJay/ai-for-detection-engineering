@@ -74,9 +74,27 @@ Industry frameworks relevant to AI in security operations.
 
 ---
 
+## Alert Correlation Capabilities by Platform
+
+How major platforms implement alert correlation, risk scoring, and multi-signal detection. For the full cross-platform analysis, see [Alert Correlation Patterns](../concepts/alert-correlation-patterns.md).
+
+| Platform | Correlation Architecture | Key Differentiator |
+|---|---|---|
+| **Splunk Enterprise Security (RBA)** | Two-layer model: risk rules write to risk index, Risk Incident Rules aggregate risk per entity and generate Risk Notables when thresholds are exceeded. Weighted scoring via `(impact * confidence) / 100` with dynamic risk modifiers (asset criticality, user privilege, threat intel). Default temporal windows: 24-hour burst and 7-day tactic progression. | Most mature weighted scoring model in production. De facto industry reference for risk-based alerting. ATT&CK tactic diversity thresholds built into default rules. |
+| **Elastic Security** | Building block rules write to alerts index but are hidden from default view. Correlation via EQL sequence queries (`maxspan` temporal windows), threshold rules, and ES\|QL queries against alert indices. Entity risk scoring aggregates host, user, and service risk. ES\|QL LOOKUP JOIN (GA 2025) enables inline enrichment. | EQL sequence queries with ordered event matching and `maxspan` provide the most expressive deterministic sequence correlation. ES\|QL's INLINE STATS enables threshold aggregation without losing event context. |
+| **Microsoft Sentinel** | Fusion ML engine automatically correlates low-fidelity analytics rule alerts into high-severity multi-stage incidents. UEBA Behaviors layer provides AI-generated behavioral building blocks. Incident grouping rules aggregate alerts by entity overlap and time proximity. Transitioning to Defender XDR correlation engine (mid-2025). | Only major platform where correlation is primarily ML-driven (Fusion) rather than authored by detection engineers. Lowest manual effort but less transparency into correlation logic. |
+| **Panther** | Python-based detection framework (pypanther). Correlation rules specify `MinMatchCount` for minimum building block rule matches. Class inheritance enables building block and correlation rule coupling. Runs on Snowflake data lakehouse. | Full Python expressiveness for correlation logic. Testable correlation rules via standard Python testing frameworks. Cloud-native architecture. |
+| **Anvilogic** | Drag-and-drop Threat Scenario canvas for visual correlation rule building. Threads vendor alerts, queries, and intel-enriched signals across kill chain stages mapped to ATT&CK. Multi-SIEM support (Splunk, Sentinel, Snowflake). Partnership with Databricks (2025) for AI-accelerated detection engineering. | Visual correlation authoring reduces barrier to building multi-stage scenarios. Cross-SIEM correlation is unique in the market. |
+| **CrowdStrike Next-Gen SIEM** | Correlation Rule Template Discovery dashboard for adopting pre-built correlation rules. Combines EDR telemetry with third-party data sources for cross-domain correlation. | Tight integration between endpoint telemetry and SIEM correlation. Template-driven approach accelerates adoption. |
+| **Google SecOps (Chronicle)** | Risk Analytics for entity-based risk scoring. YARA-L rules with multi-event correlation capabilities. Gemini AI for investigation assistance. | Leverages Google-scale infrastructure for correlation across massive data volumes. |
+
+---
+
 ## Landscape Observations
 
 - **Agentic SOC is the current wave.** Multiple startups (2024-2026) are building autonomous investigation agents. The differentiator is not "uses AI" but how much human oversight the system requires and how transparent its reasoning is.
 - **SIEM vendors are adding LLM wrappers.** Every major SIEM now has an "AI Assistant" that generates queries and summarizes incidents. These are augmentation tools, not autonomous agents.
 - **Detection content platforms solve a different problem.** SOC Prime, Anvilogic, and CardinalOps focus on rule coverage and lifecycle — AI features here are about recommending detections, not triaging alerts.
+- **Risk-based alerting is becoming the default architecture.** The Splunk RBA model — building block signals accumulated per entity, correlated through threshold and pattern rules — is being adopted (in variant forms) by Elastic, CrowdStrike, and Google SecOps. The two-layer architecture (building blocks + correlation rules) is now consensus best practice.
+- **UEBA and correlation are converging.** Microsoft Sentinel's Behaviors layer and Splunk UBA's risk index integration demonstrate that behavioral analytics and deterministic correlation rules increasingly feed the same risk accumulation pipeline rather than operating as separate systems.
 - **The real differentiator is data quality.** All of these tools depend on the same underlying data: properly parsed logs, normalized fields, complete telemetry. The prerequisites documented in this repo apply regardless of which vendor or tool you deploy.

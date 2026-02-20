@@ -207,6 +207,17 @@ AI is NOT needed when:
 
 Use your SIEM's correlation engine first. Use AI for the reasoning layer on top.
 
+### Practical Implementation: Multi-Tier Correlation Framework
+
+For a detailed, production-ready guide to building a multi-tier correlation rule framework using ES|QL, see [Correlation Rule Framework](../concepts/correlation-rule-framework.md). This document designs a 7-rule, 4-tier architecture covering:
+
+- **Tier 1:** Entity-centric correlation (user, host, and IP dimensions)
+- **Tier 2:** Kill chain progression, identity-to-endpoint chains, and lateral movement detection
+- **Tier 3:** Slow-burn risk accumulation over 7-day windows
+- **Tier 4:** Meta-correlation detecting multi-entity campaigns
+
+Each rule includes risk-weighted scoring, security domain categorization, MITRE tactic diversity thresholds, and dynamic severity output — all deterministic, all SIEM-native, and all designed to produce structured input for the AI triage layer described in UC-11 and UC-12.
+
 ---
 
 ## 4.4 SOAR Automation

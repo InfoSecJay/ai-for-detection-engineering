@@ -101,7 +101,14 @@ Shared frameworks referenced across multiple use cases.
 | [Detection Confidence Scoring](concepts/detection-confidence-scoring.md) | Framework for assigning and maintaining confidence scores on detection rules based on testing depth, tuning maturity, and real-world validation |
 | [Entity Cardinality as FP Proxy](concepts/entity-cardinality-as-fp-proxy.md) | Using the ratio of unique entities triggering a rule as a lightweight, pre-triage indicator of false positive rate |
 | [Where AI Fits (And Doesn't)](concepts/where-ai-fits-and-doesnt.md) | Decision framework for distinguishing deterministic automation problems from genuine AI/ML opportunities in detection workflows |
+| [Alert Correlation Patterns](concepts/alert-correlation-patterns.md) | Industry survey of alert correlation architectures (entity-centric, kill-chain-centric), weighted scoring models (Splunk RBA, Elastic Entity Risk), temporal windowing, UEBA integration, and building block rule patterns across major platforms |
 | [Agentic SOC Architecture](concepts/agentic-soc-architecture.md) | Reference architecture for multi-step, tool-using AI agents that execute investigation workflows with human-in-the-loop controls |
+
+### Practical Implementation
+
+| Document | Description |
+|----------|-------------|
+| [Correlation Rule Framework](concepts/correlation-rule-framework.md) | Guide to designing a multi-tier ES\|QL correlation framework: entity-centric correlation (user + host), kill chain progression, identity-endpoint chains, lateral movement detection, risk score accumulation, and campaign detection — with production-ready ES\|QL example rules for each tier |
 
 ---
 
