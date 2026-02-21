@@ -59,7 +59,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.failed_count = SUM(is_failure),
     Esql.success_count = SUM(is_success),
     Esql.last_failure_time = MAX(failure_ts),
@@ -81,8 +81,8 @@ FROM .internal.alerts-security.alerts-default
     )
 | WHERE Esql.has_success_after_fail == 1
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.failed_count >= 20 AND Esql.success_count >= 1, "critical",
         Esql.failed_count >= 10 AND Esql.success_count >= 1, "high",
         Esql.failed_count >= 5 AND Esql.success_count >= 1, "medium",

@@ -41,7 +41,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.location_count = COUNT_DISTINCT(source.geo.country_name),
     Esql.locations = VALUES(source.geo.country_name),
     Esql.time_span_minutes = DATE_DIFF("minute", MIN(@timestamp), MAX(@timestamp)),
@@ -59,8 +59,8 @@ FROM .internal.alerts-security.alerts-default
         Esql.location_count > 1, 1,
         0
     ),
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.location_count >= 3 AND Esql.time_span_minutes <= 120, "critical",
         Esql.location_count >= 2 AND Esql.has_unexpected_country == 1, "high",
         Esql.location_count >= 2, "medium",

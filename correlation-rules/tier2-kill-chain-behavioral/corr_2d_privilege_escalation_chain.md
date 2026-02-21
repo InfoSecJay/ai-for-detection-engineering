@@ -41,7 +41,7 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor),
     is_admin_context = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Privilege Escalation", 1,
+        kibana.alert.rule.threat.tactic.name == "Privilege Escalation", 1,
         kibana.alert.rule.name LIKE "*privilege*escalation*", 1,
         kibana.alert.rule.name LIKE "*admin*", 1,
         kibana.alert.rule.name LIKE "*UAC*bypass*", 1,
@@ -66,15 +66,15 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.admin_alert_count = SUM(is_admin_context),
     Esql.non_admin_alert_count = SUM(is_non_admin),
     Esql.earliest_admin = MIN(admin_ts),
     Esql.earliest_non_admin = MIN(non_admin_ts),
     Esql.critical_count = SUM(is_critical_alert),
     Esql.high_count = SUM(is_high_alert),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
     Esql.host_values = VALUES(host.name),
@@ -85,7 +85,7 @@ FROM .internal.alerts-security.alerts-default
     AND Esql.non_admin_alert_count >= 1
     AND Esql.earliest_admin > Esql.earliest_non_admin
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * 2.0),
+    Esql.risk_score = ROUND(Esql.total_risk_score * 2.0),
     Esql.escalation_gap_minutes = ROUND(DATE_DIFF("minutes", Esql.earliest_non_admin, Esql.earliest_admin)),
     Esql.correlation_severity = CASE(
         Esql.critical_count >= 1, "critical",
@@ -149,7 +149,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `user.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `process.name`, `host.name`, `related.ip`
+- **Required fields**: `user.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `process.name`, `host.name`, `related.ip`
 - **Minimum volume**: 1+ non-admin-context alert AND 1+ admin-context alert for same `user.name` within 4h
 
 ## Dependencies

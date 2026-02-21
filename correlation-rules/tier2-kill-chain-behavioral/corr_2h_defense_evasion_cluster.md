@@ -22,7 +22,7 @@ FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 1 HOURS
     AND kibana.alert.workflow_status == "open"
     AND host.name IS NOT NULL AND host.name != ""
-    AND kibana.alert.rule.parameters.threat.tactic.name == "Defense Evasion"
+    AND kibana.alert.rule.threat.tactic.name == "Defense Evasion"
 | EVAL
     severity_weight = CASE(
         signal.rule.severity == "critical", 25,
@@ -76,7 +76,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.technique_count = COUNT_DISTINCT(evasion_technique),
     Esql.technique_types = VALUES(evasion_technique),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -88,7 +88,7 @@ FROM .internal.alerts-security.alerts-default
   BY host.name
 | WHERE Esql.technique_count >= 3
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * Esql.technique_count),
+    Esql.risk_score = ROUND(Esql.total_risk_score * Esql.technique_count),
     Esql.correlation_severity = CASE(
         Esql.technique_count >= 5, "critical",
         Esql.technique_count >= 4, "high",
@@ -154,7 +154,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `user.name`, `process.name`, `related.ip`
+- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `user.name`, `process.name`, `related.ip`
 - **Minimum volume**: 3+ Defense Evasion alerts matching 3+ distinct technique patterns for same `host.name` within 1h
 
 ## Dependencies

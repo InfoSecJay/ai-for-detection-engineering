@@ -95,8 +95,8 @@ FROM .internal.alerts-security.alerts-default
     Esql.correlation_severity = CASE(
         Esql.risk_score >= 100 AND Esql.asset_criticality == "critical", "critical",
         Esql.risk_score >= 50 AND Esql.asset_criticality == "critical", "high",
-        Esql.risk_score >= 25 AND Esql.asset_criticality == "high", "high",
-        Esql.risk_score >= 25 AND Esql.asset_criticality == "critical", "medium",
+        Esql.risk_score >= 25 AND Esql.asset_criticality == "critical", "high",
+        Esql.risk_score >= 25 AND Esql.asset_criticality == "high", "medium",
         "medium"
     ),
     Esql.multi_user_flag = CASE(Esql.accessing_users >= 3, " [MULTI-USER ACCESS]", ""),
@@ -128,8 +128,8 @@ Performs a LOOKUP JOIN against `lookup-critical-assets` immediately after the FR
 |-----------|----------|
 | Esql.risk_score >= 100 on critical asset | Critical |
 | Esql.risk_score >= 50 on critical asset | High |
-| Esql.risk_score >= 25 on high-criticality asset | High |
-| Esql.risk_score >= 25 on critical asset | Medium |
+| Esql.risk_score >= 25 on critical asset | High |
+| Esql.risk_score >= 25 on high-criticality asset | Medium |
 
 The severity logic prioritizes asset criticality tier alongside risk score. A score of 50 on a critical asset (domain controller) is treated as high severity, whereas the same score on a standard asset would be medium under CORR-3A. This intentional asymmetry ensures crown jewel systems receive faster analyst attention.
 

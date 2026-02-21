@@ -69,7 +69,9 @@ FROM .internal.alerts-security.alerts-default
     Esql.host_values = VALUES(host.name),
     Esql.source_ips = VALUES(source.ip)
   BY entity
-| LOOKUP JOIN lookup-risk-scores ON entity
+| RENAME entity AS entity_value
+| LOOKUP JOIN lookup-risk-scores ON entity_value
+| RENAME entity_value AS entity
 | WHERE baseline_avg_4h_count IS NOT NULL AND baseline_stddev IS NOT NULL
 | EVAL
     Esql.volume_zscore = ROUND(
@@ -78,7 +80,7 @@ FROM .internal.alerts-security.alerts-default
     )
 | WHERE Esql.volume_zscore >= 3.0 AND Esql.current_count >= 5
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.volume_zscore >= 5.0, "critical",
         Esql.volume_zscore >= 4.0, "high",
         Esql.volume_zscore >= 3.0, "medium",

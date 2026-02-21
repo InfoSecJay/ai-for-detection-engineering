@@ -94,7 +94,7 @@ FROM .internal.alerts-security.alerts-default
   BY user.name
 | WHERE Esql.off_hours_alerts >= 2 AND Esql.off_hours_rules >= 2
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.max_severity >= 15 AND Esql.domain_count >= 2, "critical",
         Esql.off_hours_rules >= 3 OR Esql.max_severity >= 15, "high",
         Esql.off_hours_alerts >= 2 AND Esql.off_hours_rules >= 2, "medium",

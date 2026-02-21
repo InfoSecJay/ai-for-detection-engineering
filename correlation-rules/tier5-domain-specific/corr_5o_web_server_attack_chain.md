@@ -80,7 +80,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.web_attack_count = SUM(is_web_attack),
     Esql.web_attack_types = COUNT_DISTINCT(
         CASE(is_web_attack == 1, kibana.alert.rule.name, NULL)
@@ -98,8 +98,8 @@ FROM .internal.alerts-security.alerts-default
   BY host.name
 | WHERE Esql.web_attack_count >= 3 AND Esql.has_endpoint_alert == 1
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.has_execution == 1 AND Esql.web_attack_count >= 1, "critical",
         Esql.web_attack_count >= 3 AND Esql.has_endpoint_alert == 1, "high",
         Esql.web_attack_count >= 3, "medium",

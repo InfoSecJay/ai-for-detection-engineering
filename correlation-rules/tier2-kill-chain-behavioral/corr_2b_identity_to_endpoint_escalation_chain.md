@@ -77,15 +77,15 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.identity_alert_count = SUM(is_identity),
     Esql.endpoint_alert_count = SUM(is_endpoint),
     Esql.earliest_identity = MIN(identity_ts),
     Esql.earliest_endpoint = MIN(endpoint_ts),
     Esql.identity_high_plus = MAX(is_identity_high_plus),
     Esql.endpoint_high_plus = MAX(is_endpoint_high_plus),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
     Esql.domain_count = COUNT_DISTINCT(domain_category),
@@ -98,7 +98,7 @@ FROM .internal.alerts-security.alerts-default
     AND Esql.endpoint_alert_count >= 1
     AND Esql.earliest_identity <= Esql.earliest_endpoint
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * 1.5),
+    Esql.risk_score = ROUND(Esql.total_risk_score * 1.5),
     Esql.escalation_gap_minutes = ROUND(DATE_DIFF("minutes", Esql.earliest_identity, Esql.earliest_endpoint)),
     Esql.correlation_severity = CASE(
         Esql.identity_high_plus == 1 AND Esql.endpoint_high_plus == 1, "critical",
@@ -123,7 +123,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-All alerts for a user are domain-categorized. INLINE STATS computes per-domain alert counts and earliest timestamps for each user. The rule filters for users who have at least one identity-domain alert AND at least one endpoint-domain alert, AND where the identity alert timestamp precedes the endpoint alert timestamp. A 1.5x cross-domain bonus is applied to the risk score because identity-to-endpoint escalation crosses fundamentally different detection surfaces.
+All alerts for a user are domain-categorized. STATS computes per-domain alert counts and earliest timestamps for each user. The rule filters for users who have at least one identity-domain alert AND at least one endpoint-domain alert, AND where the identity alert timestamp precedes the endpoint alert timestamp. A 1.5x cross-domain bonus is applied to the risk score because identity-to-endpoint escalation crosses fundamentally different detection surfaces.
 
 ## Severity Logic
 
@@ -166,7 +166,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `user.name`, `event.dataset`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `host.name`, `related.ip`
+- **Required fields**: `user.name`, `event.dataset`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `host.name`, `related.ip`
 - **Minimum volume**: 1+ identity-domain alert AND 1+ endpoint-domain alert for the same `user.name` within 4h
 - **Critical dependency**: Consistent `user.name` field across identity and endpoint data sources
 

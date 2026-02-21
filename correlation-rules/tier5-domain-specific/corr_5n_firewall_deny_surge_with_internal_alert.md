@@ -59,7 +59,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.deny_alert_count = SUM(is_fw_deny),
     Esql.internal_alert_count = SUM(is_endpoint),
     Esql.denied_destinations = COUNT_DISTINCT(destination.ip),
@@ -74,8 +74,8 @@ FROM .internal.alerts-security.alerts-default
   BY source.ip
 | WHERE Esql.deny_alert_count >= 5 AND Esql.internal_alert_count >= 1
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.deny_alert_count >= 20 AND Esql.internal_alert_count >= 1, "critical",
         Esql.deny_alert_count >= 10 AND Esql.internal_alert_count >= 1, "high",
         Esql.deny_alert_count >= 5 AND Esql.internal_alert_count >= 1, "medium",

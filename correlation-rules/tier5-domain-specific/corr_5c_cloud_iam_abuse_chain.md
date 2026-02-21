@@ -64,7 +64,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.iam_action_count = COUNT(*),
     Esql.distinct_iam_actions = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.has_role_create = MAX(is_role_create),
@@ -80,8 +80,8 @@ FROM .internal.alerts-security.alerts-default
 | WHERE Esql.distinct_iam_actions >= 3
 | EVAL
     Esql.iam_combo_score = Esql.has_role_create + Esql.has_policy_change + Esql.has_key_create,
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.has_role_create == 1 AND Esql.has_policy_change == 1 AND Esql.has_key_create == 1, "critical",
         Esql.iam_combo_score >= 2, "high",
         Esql.distinct_iam_actions >= 3, "medium",

@@ -64,7 +64,7 @@ FROM .internal.alerts-security.alerts-default
   BY host.name
 | WHERE Esql.novel_processes >= 1
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.novel_processes >= 1 AND Esql.max_severity >= 15, "critical",
         Esql.novel_processes >= 1 AND Esql.alert_count >= 3, "high",
         Esql.novel_processes >= 1 AND Esql.max_severity >= 8, "medium",
@@ -118,6 +118,7 @@ Filters to endpoint-domain alerts with valid process hashes. Each alert's proces
 
 - **Index**: `.internal.alerts-security.alerts-default`
 - **Lookup Index**: `lookup-process-baselines` (fields: `host.name`, `process.hash.sha256`, `first_seen`, `frequency`)
+  - **NOTE**: The lookup index schema MUST include `process.hash.sha256` as a key field (not `process.name`) to match the LOOKUP JOIN in this query. Ensure the lookup index mapping defines `process.hash.sha256` as a keyword field.
 - **Required fields**: `host.name`, `process.hash.sha256`, `process.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.building_block_type`, `kibana.alert.workflow_status`, `@timestamp`, `kibana.alert.rule.name`, `user.name`
 - **Minimum volume**: Process baselines populated from 30+ days of endpoint telemetry per host group
 

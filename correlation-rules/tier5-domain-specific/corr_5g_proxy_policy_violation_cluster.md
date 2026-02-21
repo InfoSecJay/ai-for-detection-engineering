@@ -39,7 +39,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.violation_count = COUNT(*),
     Esql.distinct_categories = COUNT_DISTINCT(rule.category),
     Esql.category_values = VALUES(rule.category),
@@ -52,8 +52,8 @@ FROM .internal.alerts-security.alerts-default
   BY Esql.join_entity
 | WHERE Esql.violation_count >= 5 AND Esql.distinct_categories >= 2
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.violation_count >= 20, "high",
         Esql.violation_count >= 10 AND Esql.distinct_categories >= 3, "high",
         Esql.violation_count >= 5, "medium",

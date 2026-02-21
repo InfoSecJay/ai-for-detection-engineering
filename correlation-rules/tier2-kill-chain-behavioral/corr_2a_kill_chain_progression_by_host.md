@@ -32,14 +32,14 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor),
     kill_chain_stage = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name IN (
+        kibana.alert.rule.threat.tactic.name IN (
             "Initial Access", "Reconnaissance", "Resource Development"
         ), "early",
-        kibana.alert.rule.parameters.threat.tactic.name IN (
+        kibana.alert.rule.threat.tactic.name IN (
             "Execution", "Persistence", "Privilege Escalation", "Defense Evasion",
             "Credential Access", "Discovery", "Lateral Movement"
         ), "mid",
-        kibana.alert.rule.parameters.threat.tactic.name IN (
+        kibana.alert.rule.threat.tactic.name IN (
             "Collection", "Command and Control", "Exfiltration", "Impact"
         ), "late",
         "unmapped"
@@ -51,12 +51,12 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_early = MAX(is_early),
     Esql.has_mid = MAX(is_mid),
     Esql.has_late = MAX(is_late),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.technique_values = VALUES(kibana.alert.rule.threat.technique.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
@@ -68,7 +68,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.stage_count = Esql.has_early + Esql.has_mid + Esql.has_late
 | WHERE Esql.stage_count >= 2
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * Esql.stage_count),
+    Esql.risk_score = ROUND(Esql.total_risk_score * Esql.stage_count),
     Esql.correlation_severity = CASE(
         Esql.stage_count >= 3, "critical",
         Esql.stage_count >= 2 AND Esql.has_late == 1, "high",
@@ -93,7 +93,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is mapped to a kill chain stage using `kibana.alert.rule.parameters.threat.tactic.name`. The query computes boolean flags (`has_early`, `has_mid`, `has_late`) per host, then counts how many distinct stages are represented. Hosts with alerts in 2+ stages pass filtering. The risk score is amplified by the stage count — a host with all three stages gets a 3x multiplier because full kill chain traversal within 4 hours is a high-confidence indicator of active compromise.
+Each alert is mapped to a kill chain stage using `kibana.alert.rule.threat.tactic.name`. The query computes boolean flags (`has_early`, `has_mid`, `has_late`) per host, then counts how many distinct stages are represented. Hosts with alerts in 2+ stages pass filtering. The risk score is amplified by the stage count — a host with all three stages gets a 3x multiplier because full kill chain traversal within 4 hours is a high-confidence indicator of active compromise.
 
 ## Severity Logic
 
@@ -117,7 +117,7 @@ CASE(
 
 - **Blind Spots:**
   - Attacks spanning more than 4 hours between stages — slow-and-low progressions where Initial Access occurs in the morning and Execution occurs in the afternoon will be missed
-  - MITRE ATT&CK tactics not mapped in detection rule metadata — alerts without `kibana.alert.rule.parameters.threat.tactic.name` populated fall into "unmapped" and are excluded from stage counting
+  - MITRE ATT&CK tactics not mapped in detection rule metadata — alerts without `kibana.alert.rule.threat.tactic.name` populated fall into "unmapped" and are excluded from stage counting
   - Alerts missing `host.name` (pure network-based detections with only IP addresses)
   - Multi-host attack chains where different stages occur on different hosts (use CORR-2C for lateral movement tracking)
 
@@ -136,7 +136,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `kibana.alert.rule.threat.technique.name`, `user.name`, `related.ip`
+- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `kibana.alert.rule.threat.technique.name`, `user.name`, `related.ip`
 - **Minimum volume**: 2+ alerts from 2+ distinct kill chain stages for the same host within 4h
 - **Critical dependency**: Detection rules MUST have MITRE ATT&CK tactic mappings populated. Rules without tactic metadata are invisible to this correlation.
 
@@ -144,7 +144,7 @@ CASE(
 
 - No required lookup indices
 - Optional: `lookup-critical-assets` — escalate severity for production/PCI hosts
-- Prerequisite: Detection rules must have MITRE ATT&CK tactic mappings in `kibana.alert.rule.parameters.threat.tactic.name`
+- Prerequisite: Detection rules must have MITRE ATT&CK tactic mappings in `kibana.alert.rule.threat.tactic.name`
 
 ## Validation
 

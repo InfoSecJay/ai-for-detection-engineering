@@ -78,7 +78,9 @@ FROM .internal.alerts-security.alerts-default
     Esql.latest = MAX(@timestamp),
     Esql.entity_type = MAX(entity_type)
   BY entity_name
-| LOOKUP JOIN lookup-risk-scores ON entity_name
+| RENAME entity_name AS entity_value
+| LOOKUP JOIN lookup-risk-scores ON entity_value
+| RENAME entity_value AS entity_name
 | EVAL
     baseline_avg_4h = COALESCE(ROUND(rolling_24h_risk / 6), 0),
     Esql.risk_velocity = ROUND(TO_DOUBLE(Esql.current_risk) / TO_DOUBLE(GREATEST(baseline_avg_4h, 1))),

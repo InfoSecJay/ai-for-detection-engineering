@@ -59,13 +59,16 @@ FROM .internal.alerts-security.alerts-default
         signal.rule.severity IN ("high", "critical")
             AND kibana.alert.rule.building_block_type IS NULL, 1, 0
     )
-| LOOKUP JOIN lookup-entity-history ON entity
+| RENAME entity AS entity_value
+| LOOKUP JOIN lookup-entity-history ON entity_value
+| RENAME entity_value AS entity
 | EVAL
     Esql.is_new_domain = CASE(
         known_domains IS NULL, true,
         NOT domain_category IN (known_domains), true,
         false
     )
+// NOTE: The IN operator above requires `known_domains` to be a multi-valued keyword array field, NOT a comma-separated string.
 | WHERE Esql.is_new_domain == true
 | STATS
     Esql.new_domain_alerts = COUNT(*),
@@ -83,7 +86,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.source_ips = VALUES(source.ip)
   BY entity
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.max_severity >= 15 AND domain_category == "endpoint", "critical",
         Esql.new_domain_count >= 2, "high",
         Esql.new_domain_count >= 1, "medium",
@@ -135,7 +138,8 @@ Each alert is categorized into a detection domain using the standard domain cate
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Lookup Index**: `lookup-entity-history` (fields: `entity`, `known_domains`, `first_seen`, `rule_name`)
+- **Lookup Index**: `lookup-entity-history` (fields: `entity_value`, `known_domains`, `first_seen`, `rule_name`)
+  - **IMPORTANT**: The `known_domains` field in `lookup-entity-history` MUST be stored as a multi-valued keyword array (not a comma-separated string) for the IN operator to work correctly. When indexing, ensure each domain category is a separate array element.
 - **Required fields**: `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.building_block_type`, `kibana.alert.workflow_status`, `@timestamp`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `source.ip`
 - **Minimum volume**: Entity domain history populated from 30+ days of alert data
 

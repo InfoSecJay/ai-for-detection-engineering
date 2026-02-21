@@ -32,7 +32,7 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor),
     data_stage = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Collection", "collection",
+        kibana.alert.rule.threat.tactic.name == "Collection", "collection",
         kibana.alert.rule.name LIKE "*archive*"
             OR kibana.alert.rule.name LIKE "*compress*"
             OR kibana.alert.rule.name LIKE "*staging*"
@@ -42,7 +42,7 @@ FROM .internal.alerts-security.alerts-default
             OR kibana.alert.rule.name LIKE "*zip *"
             OR kibana.alert.rule.name LIKE "*tar *"
             OR kibana.alert.rule.name LIKE "*makecab*", "staging",
-        kibana.alert.rule.parameters.threat.tactic.name == "Exfiltration", "exfiltration",
+        kibana.alert.rule.threat.tactic.name == "Exfiltration", "exfiltration",
         kibana.alert.rule.name LIKE "*exfil*"
             OR kibana.alert.rule.name LIKE "*large upload*"
             OR kibana.alert.rule.name LIKE "*data transfer*"
@@ -57,14 +57,14 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_collection = MAX(is_collection),
     Esql.has_staging = MAX(is_staging),
     Esql.has_exfiltration = MAX(is_exfiltration),
     Esql.collection_count = SUM(is_collection),
     Esql.staging_count = SUM(is_staging),
     Esql.exfiltration_count = SUM(is_exfiltration),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
     Esql.user_values = VALUES(user.name),
@@ -75,7 +75,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.stages_present = Esql.has_collection + Esql.has_staging + Esql.has_exfiltration
 | WHERE Esql.stages_present >= 2
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * Esql.stages_present),
+    Esql.risk_score = ROUND(Esql.total_risk_score * Esql.stages_present),
     Esql.correlation_severity = CASE(
         Esql.stages_present >= 3, "critical",
         Esql.has_collection == 1 AND Esql.has_exfiltration == 1, "critical",
@@ -144,7 +144,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `user.name`, `related.ip`
+- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `user.name`, `related.ip`
 - **Minimum volume**: 2+ alerts matching 2+ distinct data theft stages for same `host.name` within 6h
 - **Critical dependency**: Detection rules for archive/compress/staging activity must exist and have consistent naming patterns
 

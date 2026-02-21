@@ -77,8 +77,8 @@ FROM .internal.alerts-security.alerts-default
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
     Esql.entity_values = VALUES(entity),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.user_values = VALUES(user.name)
   BY shared_ioc
@@ -87,7 +87,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.campaign_score = ROUND(Esql.risk_score
         * CASE(Esql.entity_count >= 10, 2.0, Esql.entity_count >= 5, 1.5, 1.0)
         * CASE(Esql.domain_count >= 3, 1.5, Esql.domain_count >= 2, 1.25, 1.0)),
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.entity_count >= 10, "critical",
         Esql.entity_count >= 5, "high",
         Esql.entity_count >= 3, "medium",
@@ -144,7 +144,7 @@ Campaign score multipliers: entity_count >= 10 = 2.0x, >= 5 = 1.5x base risk. Do
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `process.hash.sha256`, `destination.ip`, `dns.question.name`, `url.domain`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `@timestamp`
+- **Required fields**: `process.hash.sha256`, `destination.ip`, `dns.question.name`, `url.domain`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `@timestamp`
 - **Minimum volume**: 3+ entities with alerts sharing the same IOC value in 24h
 
 ## Dependencies

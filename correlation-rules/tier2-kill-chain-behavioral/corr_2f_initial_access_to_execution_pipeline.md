@@ -22,7 +22,7 @@ FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 2 HOURS
     AND kibana.alert.workflow_status == "open"
     AND host.name IS NOT NULL AND host.name != ""
-    AND kibana.alert.rule.parameters.threat.tactic.name IN (
+    AND kibana.alert.rule.threat.tactic.name IN (
         "Initial Access", "Execution"
     )
 | EVAL
@@ -35,16 +35,16 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor),
     is_initial_access = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Initial Access", 1, 0
+        kibana.alert.rule.threat.tactic.name == "Initial Access", 1, 0
     ),
     is_execution = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Execution", 1, 0
+        kibana.alert.rule.threat.tactic.name == "Execution", 1, 0
     ),
     initial_access_ts = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Initial Access", @timestamp, NULL
+        kibana.alert.rule.threat.tactic.name == "Initial Access", @timestamp, NULL
     ),
     execution_ts = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Execution", @timestamp, NULL
+        kibana.alert.rule.threat.tactic.name == "Execution", @timestamp, NULL
     ),
     is_phishing = CASE(
         kibana.alert.rule.name LIKE "*phish*"
@@ -62,14 +62,14 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.initial_access_count = SUM(is_initial_access),
     Esql.execution_count = SUM(is_execution),
     Esql.earliest_initial_access = MIN(initial_access_ts),
     Esql.earliest_execution = MIN(execution_ts),
     Esql.has_phishing = MAX(is_phishing),
     Esql.has_web_exploit = MAX(is_web_exploit),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.technique_values = VALUES(kibana.alert.rule.threat.technique.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
@@ -80,7 +80,7 @@ FROM .internal.alerts-security.alerts-default
     AND Esql.execution_count >= 1
     AND Esql.earliest_execution > Esql.earliest_initial_access
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * 1.5),
+    Esql.risk_score = ROUND(Esql.total_risk_score * 1.5),
     Esql.access_to_execution_minutes = ROUND(DATE_DIFF("minutes", Esql.earliest_initial_access, Esql.earliest_execution)),
     Esql.correlation_severity = CASE(
         Esql.has_phishing == 1 AND Esql.execution_count >= 1, "critical",
@@ -105,7 +105,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Alerts are tagged with kill chain stage flags. INLINE STATS computes the earliest timestamp for Initial Access alerts and the earliest timestamp for Execution alerts per host. The rule filters for hosts where an Execution alert follows an Initial Access alert. Additional context is extracted: whether the initial access was phishing-related or web-exploit-related for more granular severity classification. A 1.5x risk multiplier is applied for the confirmed initial-access-to-execution chain.
+Alerts are tagged with kill chain stage flags. STATS computes the earliest timestamp for Initial Access alerts and the earliest timestamp for Execution alerts per host. The rule filters for hosts where an Execution alert follows an Initial Access alert. Additional context is extracted: whether the initial access was phishing-related or web-exploit-related for more granular severity classification. A 1.5x risk multiplier is applied for the confirmed initial-access-to-execution chain.
 
 ## Severity Logic
 
@@ -148,7 +148,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `kibana.alert.rule.threat.technique.name`, `user.name`, `related.ip`
+- **Required fields**: `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `kibana.alert.rule.threat.technique.name`, `user.name`, `related.ip`
 - **Minimum volume**: 1+ Initial Access alert AND 1+ Execution alert for same `host.name` within 2h
 - **Critical dependency**: Detection rules for Initial Access AND Execution must both be deployed and properly tactic-mapped
 

@@ -21,7 +21,7 @@
 FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 24 HOURS
     AND kibana.alert.workflow_status == "open"
-    AND kibana.alert.rule.parameters.threat.tactic.name IS NOT NULL
+    AND kibana.alert.rule.threat.tactic.name IS NOT NULL
 | EVAL
     entity = COALESCE(user.name, host.name),
     domain_category = CASE(
@@ -66,10 +66,10 @@ FROM .internal.alerts-security.alerts-default
     alert_risk = ROUND(severity_weight * bbr_factor)
 | WHERE entity IS NOT NULL
 | STATS
-    Esql.unique_tactics = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.unique_techniques = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.technique.id),
-    Esql.technique_values = VALUES(kibana.alert.rule.parameters.threat.technique.id),
+    Esql.unique_tactics = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
+    Esql.unique_techniques = COUNT_DISTINCT(kibana.alert.rule.threat.technique.name),
+    Esql.technique_values = VALUES(kibana.alert.rule.threat.technique.name),
     Esql.alert_count = COUNT(*),
     Esql.risk_score = SUM(alert_risk),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -87,7 +87,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.ttp_score = ROUND(Esql.risk_score
         * CASE(Esql.unique_tactics >= 6, 2.5, Esql.unique_tactics >= 5, 2.0, Esql.unique_tactics >= 4, 1.5, 1.0)
         * CASE(Esql.ttp_diversity_ratio >= 0.5, 1.5, Esql.ttp_diversity_ratio >= 0.25, 1.25, 1.0)),
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.unique_tactics >= 6, "critical",
         Esql.unique_tactics >= 5, "high",
         Esql.unique_tactics >= 4, "medium",
@@ -144,7 +144,7 @@ TTP score multipliers: unique_tactics >= 6 = 2.5x, >= 5 = 2.0x, >= 4 = 1.5x. TTP
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `kibana.alert.rule.parameters.threat.tactic.name`, `kibana.alert.rule.parameters.threat.technique.id`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `@timestamp`
+- **Required fields**: `kibana.alert.rule.threat.tactic.name`, `kibana.alert.rule.threat.technique.name`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `@timestamp`
 - **Minimum volume**: Alerts spanning 4+ distinct MITRE tactics for the same entity in 24h
 
 ## Dependencies

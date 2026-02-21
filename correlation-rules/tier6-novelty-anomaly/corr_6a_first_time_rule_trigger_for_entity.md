@@ -37,7 +37,9 @@ FROM .internal.alerts-security.alerts-default
         signal.rule.severity IN ("high", "critical")
             AND kibana.alert.rule.building_block_type IS NULL, 1, 0
     )
-| LOOKUP JOIN lookup-entity-history ON entity, rule_name
+| RENAME entity AS entity_value
+| LOOKUP JOIN lookup-entity-history ON entity_value, rule_name
+| RENAME entity_value AS entity
 | WHERE last_seen_date IS NULL
 | STATS
     Esql.novel_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -55,7 +57,7 @@ FROM .internal.alerts-security.alerts-default
   BY entity
 | WHERE Esql.novel_rules >= 1
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.novel_rules >= 3 AND Esql.max_severity >= 15, "critical",
         Esql.novel_rules >= 2, "high",
         Esql.novel_rules >= 1 AND Esql.max_severity >= 15, "high",

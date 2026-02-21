@@ -17,6 +17,7 @@ This catalog contains 55 production-ready ES|QL correlation rules for Elastic Se
 ```
 correlation-rules/
 ├── correlation-rule-catalog.md          ← this file (overview + conventions + deployment guide)
+├── audit-report.md                     ← audit findings and remediation status
 ├── tier1-entity-centric/                ← 8 rules (CORR-1A through CORR-1H)
 ├── tier2-kill-chain-behavioral/         ← 10 rules (CORR-2A through CORR-2J)
 ├── tier3-risk-accumulation/             ← 5 rules (CORR-3A through CORR-3E)
@@ -142,7 +143,7 @@ All computed fields use the `Esql.` prefix to distinguish them from source ECS f
 Esql.risk_score          — computed risk score
 Esql.domain_count        — count of distinct detection domains
 Esql.alert_count         — count of correlated alerts
-Esql.severity            — dynamically computed severity
+Esql.correlation_severity — dynamically computed severity
 ```
 
 ### Severity Risk Weights
@@ -254,11 +255,13 @@ Correlation rules use `LOOKUP JOIN` to enrich alert data with contextual informa
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `host.name` | keyword | Hostname (join key) |
+| `entity_name` | keyword | Entity identifier — hostname or username (join key). Tier 3 rules join on `entity_name` via `COALESCE(user.name, host.name)`. |
 | `asset.criticality` | keyword | `critical`, `high`, `medium`, `low` |
 | `asset.environment` | keyword | `production`, `staging`, `development` |
 | `asset.business_unit` | keyword | Owning business unit |
 | `asset.pci_in_scope` | boolean | PCI DSS scope flag |
+
+> **Populate**: Include both critical hosts (by `host.name`) and critical users (by `user.name`) as `entity_name` values.
 
 ### 2. lookup-service-accounts
 
@@ -285,14 +288,14 @@ Correlation rules use `LOOKUP JOIN` to enrich alert data with contextual informa
 | `entity_value` | keyword | Entity identifier (join key) |
 | `rule_name` | keyword | Detection rule name |
 | `first_seen` | date | First time this entity triggered this rule |
-| `known_domains` | keyword | Comma-separated domains entity has appeared in |
+| `known_domains` | keyword (array) | Multi-valued keyword array of domains entity has appeared in. **Must be indexed as a keyword array** (not a comma-separated string) for ES|QL `IN` operator compatibility. |
 
 ### 5. lookup-geo-baselines
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `user.name` | keyword | Username (join key) |
-| `expected_countries` | keyword | Comma-separated expected country codes |
+| `expected_countries` | keyword (array) | Multi-valued keyword array of expected country names. **Must be indexed as a keyword array** (not a comma-separated string) for ES|QL `IN` operator compatibility. |
 | `last_updated` | date | Last baseline update |
 
 ### 6. lookup-business-hours
@@ -333,8 +336,12 @@ Correlation rules use `LOOKUP JOIN` to enrich alert data with contextual informa
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `host.name` | keyword | Hostname (join key) |
-| `expected_ports` | keyword | Comma-separated expected ports |
+| `destination.port` | keyword | Port number (join key for CORR-6F) |
+| `is_standard` | boolean | Whether this port is considered standard/expected |
+| `host.name` | keyword | Optional: hostname for per-host port baselines |
+| `expected_ports` | keyword (array) | Optional: multi-valued array of expected ports per host |
+
+> **Note**: CORR-6F joins on `destination.port` to classify ports as standard/non-standard. Populate one row per known-standard port with `is_standard: true`.
 
 ### 11. lookup-risk-scores
 

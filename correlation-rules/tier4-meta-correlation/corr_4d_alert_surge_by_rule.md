@@ -40,16 +40,18 @@ FROM .internal.alerts-security.alerts-default
     Esql.max_severity = MAX(severity_weight),
     Esql.entity_values = VALUES(entity),
     Esql.host_values = VALUES(host.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name)
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name)
   BY kibana.alert.rule.name
-| LOOKUP JOIN lookup-rule-baselines ON rule_name = kibana.alert.rule.name
+| RENAME kibana.alert.rule.name AS rule_name
+| LOOKUP JOIN lookup-rule-baselines ON rule_name
+| RENAME rule_name AS kibana.alert.rule.name
 | EVAL
     Esql.baseline_hourly_avg = ROUND(avg_daily_alerts / 24.0, 2),
     Esql.baseline_hourly_stddev = ROUND(std_dev_alerts / 24.0, 2),
     Esql.surge_ratio = ROUND(Esql.current_count / GREATEST(Esql.baseline_hourly_avg, 1.0), 2)
 | WHERE Esql.surge_ratio >= 5.0 AND Esql.current_count >= 10
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.surge_ratio >= 20.0, "critical",
         Esql.surge_ratio >= 10.0, "high",
         Esql.surge_ratio >= 5.0, "medium",
@@ -105,7 +107,7 @@ Additional escalation criteria (evaluated manually or by downstream AI): if `cur
 
 - **Index**: `.internal.alerts-security.alerts-default`
 - **Lookup index**: `lookup-rule-baselines` with fields: `rule_name` (keyword), `avg_daily_alerts` (double), `std_dev_alerts` (double), `last_fire_date` (date)
-- **Required fields**: `kibana.alert.rule.name`, `user.name`, `host.name`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.parameters.threat.tactic.name`, `@timestamp`
+- **Required fields**: `kibana.alert.rule.name`, `user.name`, `host.name`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.threat.tactic.name`, `@timestamp`
 - **Minimum volume**: 10+ alerts from a single rule in 1 hour, exceeding 5x baseline
 
 ## Dependencies

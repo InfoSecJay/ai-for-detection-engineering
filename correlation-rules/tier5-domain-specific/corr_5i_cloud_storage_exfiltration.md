@@ -66,7 +66,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_permission_change = MAX(is_permission_change),
     Esql.has_bulk_access = MAX(is_bulk_access),
     Esql.has_public_grant = MAX(is_public_grant),
@@ -80,8 +80,8 @@ FROM .internal.alerts-security.alerts-default
 | WHERE Esql.storage_action_count >= 2
     AND (Esql.has_permission_change == 1 OR Esql.has_public_grant == 1)
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.has_public_grant == 1 AND Esql.has_bulk_access == 1, "critical",
         Esql.has_permission_change == 1 AND Esql.has_bulk_access == 1, "high",
         "medium"

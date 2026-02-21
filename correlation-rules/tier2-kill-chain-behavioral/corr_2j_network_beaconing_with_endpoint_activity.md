@@ -56,7 +56,7 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor),
     is_c2_tactic = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Command and Control", 1, 0
+        kibana.alert.rule.threat.tactic.name == "Command and Control", 1, 0
     ),
     is_c2_pattern = CASE(
         kibana.alert.rule.name LIKE "*beacon*"
@@ -72,20 +72,20 @@ FROM .internal.alerts-security.alerts-default
             OR kibana.alert.rule.name LIKE "*suspicious*DNS*", 1, 0
     ),
     is_execution = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Execution", 1, 0
+        kibana.alert.rule.threat.tactic.name == "Execution", 1, 0
     )
 | STATS
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.network_alert_count = SUM(is_network),
     Esql.endpoint_alert_count = SUM(is_endpoint),
     Esql.c2_tactic_count = SUM(is_c2_tactic),
     Esql.c2_pattern_count = SUM(is_c2_pattern),
     Esql.execution_count = SUM(is_execution),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
     Esql.domain_count = COUNT_DISTINCT(domain_category),
@@ -98,7 +98,7 @@ FROM .internal.alerts-security.alerts-default
 | WHERE Esql.network_alert_count >= 1
     AND Esql.endpoint_alert_count >= 1
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * 1.5),
+    Esql.risk_score = ROUND(Esql.total_risk_score * 1.5),
     Esql.has_c2_signal = CASE(
         Esql.c2_tactic_count >= 1 OR Esql.c2_pattern_count >= 1, 1, 0
     ),
@@ -126,7 +126,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is domain-categorized. INLINE STATS computes per-domain presence flags for each host. The rule filters for hosts that have at least one network-domain alert AND at least one endpoint-domain alert. Additional classification checks for C2-indicative patterns (Command and Control tactic, beaconing-related rule names, DNS tunneling). A 1.5x cross-domain bonus is applied because network + endpoint correlation crosses fundamentally different detection surfaces.
+Each alert is domain-categorized. STATS computes per-domain presence flags for each host. The rule filters for hosts that have at least one network-domain alert AND at least one endpoint-domain alert. Additional classification checks for C2-indicative patterns (Command and Control tactic, beaconing-related rule names, DNS tunneling). A 1.5x cross-domain bonus is applied because network + endpoint correlation crosses fundamentally different detection surfaces.
 
 ## Severity Logic
 
@@ -169,7 +169,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `host.name`, `@timestamp`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `user.name`, `destination.ip`, `destination.port`, `related.ip`
+- **Required fields**: `host.name`, `@timestamp`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `user.name`, `destination.ip`, `destination.port`, `related.ip`
 - **Minimum volume**: 1+ network-domain alert AND 1+ endpoint-domain alert for same `host.name` within 4h
 - **Critical dependency**: Both network-based detection rules (firewall, NDR, proxy, or DNS) AND endpoint-based detection rules must be deployed and generating alerts
 

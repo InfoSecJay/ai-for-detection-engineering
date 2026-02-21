@@ -42,15 +42,17 @@ FROM .internal.alerts-security.alerts-default
     Esql.max_severity_weight = MAX(severity_weight),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.technique_values = VALUES(kibana.alert.rule.parameters.threat.technique.id)
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
+    Esql.technique_values = VALUES(kibana.alert.rule.threat.technique.name)
   BY kibana.alert.rule.name
-| LOOKUP JOIN lookup-rule-baselines ON rule_name = kibana.alert.rule.name
+| RENAME kibana.alert.rule.name AS rule_name
+| LOOKUP JOIN lookup-rule-baselines ON rule_name
+| RENAME rule_name AS kibana.alert.rule.name
 | EVAL
     Esql.days_silent = DATE_DIFF("day", last_fire_date, Esql.last_seen)
 | WHERE Esql.days_silent >= 30
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.days_silent >= 90 AND Esql.max_severity_weight >= 15, "critical",
         Esql.days_silent >= 90, "high",
         Esql.days_silent >= 30, "medium",
@@ -108,7 +110,7 @@ Reactivation score multipliers: days_silent >= 180 = 3.0x, >= 90 = 2.0x, >= 60 =
 
 - **Index**: `.internal.alerts-security.alerts-default`
 - **Lookup index**: `lookup-rule-baselines` with fields: `rule_name` (keyword), `last_fire_date` (date), `avg_daily_alerts` (double), `std_dev_alerts` (double)
-- **Required fields**: `kibana.alert.rule.name`, `user.name`, `host.name`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.parameters.threat.tactic.name`, `kibana.alert.rule.parameters.threat.technique.id`, `@timestamp`
+- **Required fields**: `kibana.alert.rule.name`, `user.name`, `host.name`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.threat.tactic.name`, `kibana.alert.rule.threat.technique.name`, `@timestamp`
 - **Minimum volume**: 1+ alert from a rule whose `last_fire_date` is 30+ days ago
 
 ## Dependencies

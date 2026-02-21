@@ -154,7 +154,7 @@ In a normal distribution, 3 standard deviations encompasses 99.7% of the populat
 
 - **Index**: `.internal.alerts-security.alerts-default`
 - **Required fields**: `@timestamp`, `user.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`
-- **Lookup index**: `lookup-peer-baselines` (with `user.name` as join key; `department`, `avg_weekly_risk`, `std_dev_risk` fields). This lookup must be pre-populated with per-user department mappings and per-department risk statistics.
+- **Lookup index**: `lookup-peer-baselines` (with `user.name` as join key; `department`, `avg_weekly_risk`, `std_dev_risk` fields). The lookup index must be structured per-user with `user.name` as the join key field (not per-department with `department` as the key). Each row maps a single `user.name` to its department's risk statistics. This lookup must be pre-populated with per-user department mappings and per-department risk statistics.
 - **Identity enrichment**: Requires that `user.name` values in the alerts index can be mapped to department/role in the lookup. This depends on an identity enrichment pipeline (AD sync, HRIS integration, or manual mapping).
 
 ## Dependencies

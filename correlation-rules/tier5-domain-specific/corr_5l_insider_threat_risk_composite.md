@@ -103,7 +103,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_off_hours = MAX(is_off_hours_access),
     Esql.has_large_transfer = MAX(is_large_data_transfer),
     Esql.has_policy_violation = MAX(is_policy_violation),
@@ -123,8 +123,8 @@ FROM .internal.alerts-security.alerts-default
 | WHERE Esql.insider_indicator_count >= 3
 | LOOKUP JOIN lookup-business-hours ON user.name
 | EVAL
-    Esql.insider_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.insider_indicator_count >= 5, "critical",
         Esql.insider_indicator_count >= 4, "high",
         Esql.insider_indicator_count >= 3, "medium",
@@ -138,11 +138,11 @@ FROM .internal.alerts-security.alerts-default
         " | Policy violation: ", TO_STRING(Esql.has_policy_violation),
         " | Unusual resource: ", TO_STRING(Esql.has_unusual_resource),
         " | Removable media: ", TO_STRING(Esql.has_removable_media),
-        " | Insider Score: ", TO_STRING(Esql.insider_score),
+        " | Insider Score: ", TO_STRING(Esql.risk_score),
         " | ", TO_STRING(Esql.domain_count), " domains",
         " | Window: ", TO_STRING(Esql.first_seen), " to ", TO_STRING(Esql.last_seen)
     )
-| SORT Esql.insider_score DESC
+| SORT Esql.risk_score DESC
 | LIMIT 50
 ```
 

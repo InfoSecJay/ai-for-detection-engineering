@@ -42,18 +42,18 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor),
     has_latmove_tactic = CASE(
-        kibana.alert.rule.parameters.threat.tactic.name == "Lateral Movement", 1, 0
+        kibana.alert.rule.threat.tactic.name == "Lateral Movement", 1, 0
     )
 | STATS
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.host_count = COUNT_DISTINCT(host.name),
     Esql.host_values = VALUES(host.name),
     Esql.latmove_alert_count = SUM(has_latmove_tactic),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.technique_values = VALUES(kibana.alert.rule.threat.technique.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
@@ -74,7 +74,7 @@ FROM .internal.alerts-security.alerts-default
   BY user.name
 | WHERE Esql.host_count >= 3
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * (Esql.host_count / 2)),
+    Esql.risk_score = ROUND(Esql.total_risk_score * (Esql.host_count / 2)),
     Esql.correlation_severity = CASE(
         Esql.host_count >= 5, "critical",
         Esql.host_count >= 3 AND Esql.latmove_alert_count >= 1, "high",
@@ -139,7 +139,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `user.name`, `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `event.dataset`, `related.ip`
+- **Required fields**: `user.name`, `host.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `event.dataset`, `related.ip`
 - **Minimum volume**: 3+ alerts on 3+ distinct hosts for same `user.name` within 4h
 
 ## Dependencies

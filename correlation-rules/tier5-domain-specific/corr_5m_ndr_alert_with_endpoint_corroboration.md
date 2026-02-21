@@ -61,7 +61,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_ndr = MAX(is_ndr),
     Esql.has_endpoint = MAX(is_endpoint),
     Esql.ndr_alert_count = SUM(is_ndr),
@@ -79,8 +79,8 @@ FROM .internal.alerts-security.alerts-default
   BY host.name
 | WHERE Esql.has_ndr == 1 AND Esql.has_endpoint == 1
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * 2.0),
-    Esql.severity = CASE(
+    Esql.risk_score = ROUND(Esql.total_risk_score * 2.0),
+    Esql.correlation_severity = CASE(
         Esql.has_ndr_high == 1 AND Esql.has_endpoint_high == 1, "critical",
         Esql.has_ndr == 1 AND Esql.has_endpoint == 1, "high",
         "medium"

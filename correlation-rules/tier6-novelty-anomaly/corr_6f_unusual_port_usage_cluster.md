@@ -71,8 +71,8 @@ FROM .internal.alerts-security.alerts-default
   BY entity
 | WHERE Esql.unusual_port_alerts >= 2 AND Esql.distinct_unusual_ports >= 2
 | EVAL
-    Esql.severity = CASE(
-        Esql.distinct_unusual_ports >= 5, "high",
+    Esql.correlation_severity = CASE(
+        Esql.distinct_unusual_ports >= 5, "critical",
         Esql.distinct_unusual_ports >= 3, "high",
         Esql.distinct_unusual_ports >= 2 AND Esql.domain_count >= 2, "medium",
         "medium"
@@ -97,7 +97,7 @@ Filters to network-related alert domains (network_fw, network_ndr, proxy). Each 
 
 | Condition | Severity |
 |-----------|----------|
-| 5+ distinct unusual ports | High |
+| 5+ distinct unusual ports | Critical |
 | 3+ distinct unusual ports | High |
 | 2+ unusual ports with multi-domain network alerts | Medium |
 | 2+ unusual ports (single domain) | Medium |
@@ -125,6 +125,7 @@ Filters to network-related alert domains (network_fw, network_ndr, proxy). Each 
 
 - **Index**: `.internal.alerts-security.alerts-default`
 - **Lookup Index**: `lookup-network-baselines` (fields: `destination.port`, `port_frequency`, `is_standard`)
+  - **NOTE**: The lookup index schema MUST use `destination.port` as the key field (not `host.name`) to match the LOOKUP JOIN in this query. The `is_standard` boolean field must be present for the WHERE filter to work correctly.
 - **Required fields**: `host.name`, `source.ip`, `destination.port`, `destination.ip`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.building_block_type`, `kibana.alert.workflow_status`, `@timestamp`, `kibana.alert.rule.name`
 - **Minimum volume**: Network baselines populated from 30+ days of firewall/proxy/NDR logs
 

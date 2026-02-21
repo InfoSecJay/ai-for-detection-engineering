@@ -52,6 +52,7 @@ FROM .internal.alerts-security.alerts-default
         NOT source.geo.country_name IN (expected_countries), true,
         false
     )
+// NOTE: The IN operator above requires `expected_countries` to be a multi-valued keyword array field, NOT a comma-separated string.
 | WHERE Esql.is_new_country == true
 | STATS
     Esql.new_country_alerts = COUNT(*),
@@ -69,7 +70,7 @@ FROM .internal.alerts-security.alerts-default
   BY user.name
 | WHERE Esql.new_country_alerts >= 1
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.new_countries >= 1 AND Esql.max_severity >= 15, "critical",
         Esql.new_countries >= 2, "high",
         Esql.new_countries >= 1, "medium",
@@ -122,6 +123,7 @@ Filters alerts to those with `source.geo.country_name` populated, then uses `LOO
 
 - **Index**: `.internal.alerts-security.alerts-default`
 - **Lookup Index**: `lookup-geo-baselines` (fields: `user.name`, `expected_countries`, `last_updated`)
+  - **IMPORTANT**: The `expected_countries` field in `lookup-geo-baselines` MUST be stored as a multi-valued keyword array (not a comma-separated string) for the IN operator to work correctly. When indexing, ensure each country is a separate array element.
 - **Required fields**: `user.name`, `source.geo.country_name`, `source.ip`, `signal.rule.severity`, `kibana.alert.rule.building_block_type`, `kibana.alert.workflow_status`, `@timestamp`, `kibana.alert.rule.name`
 - **Minimum volume**: Geo baselines populated from 30+ days of authentication data
 

@@ -47,7 +47,7 @@ FROM .internal.alerts-security.alerts-default
             OR kibana.alert.rule.name LIKE "*password spray*"
             OR kibana.alert.rule.name LIKE "*credential stuff*"
             OR kibana.alert.rule.name LIKE "*unauthorized*access*"
-            OR kibana.alert.rule.parameters.threat.tactic.name == "Initial Access", "auth",
+            OR kibana.alert.rule.threat.tactic.name == "Initial Access", "auth",
         kibana.alert.rule.name LIKE "*IAM*"
             OR kibana.alert.rule.name LIKE "*iam*"
             OR kibana.alert.rule.name LIKE "*role*creat*"
@@ -58,7 +58,7 @@ FROM .internal.alerts-security.alerts-default
             OR kibana.alert.rule.name LIKE "*privilege*escalat*"
             OR kibana.alert.rule.name LIKE "*access key*creat*"
             OR kibana.alert.rule.name LIKE "*service account*creat*"
-            OR kibana.alert.rule.parameters.threat.tactic.name == "Privilege Escalation", "iam_change",
+            OR kibana.alert.rule.threat.tactic.name == "Privilege Escalation", "iam_change",
         kibana.alert.rule.name LIKE "*instance*launch*"
             OR kibana.alert.rule.name LIKE "*instance*creat*"
             OR kibana.alert.rule.name LIKE "*VM*creat*"
@@ -69,7 +69,7 @@ FROM .internal.alerts-security.alerts-default
             OR kibana.alert.rule.name LIKE "*resource*creat*"
             OR kibana.alert.rule.name LIKE "*security group*modif*"
             OR kibana.alert.rule.name LIKE "*network*modif*"
-            OR kibana.alert.rule.parameters.threat.tactic.name == "Persistence", "resource_mod",
+            OR kibana.alert.rule.threat.tactic.name == "Persistence", "resource_mod",
         "other"
     ),
     is_auth = CASE(cloud_stage == "auth", 1, 0),
@@ -79,14 +79,14 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_auth = MAX(is_auth),
     Esql.has_iam = MAX(is_iam_change),
     Esql.has_resource = MAX(is_resource_mod),
     Esql.auth_count = SUM(is_auth),
     Esql.iam_count = SUM(is_iam_change),
     Esql.resource_count = SUM(is_resource_mod),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
     Esql.cloud_accounts = VALUES(cloud.account.id),
@@ -97,7 +97,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.stages_present = Esql.has_auth + Esql.has_iam + Esql.has_resource
 | WHERE Esql.stages_present >= 2
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * Esql.stages_present),
+    Esql.risk_score = ROUND(Esql.total_risk_score * Esql.stages_present),
     Esql.correlation_severity = CASE(
         Esql.stages_present >= 3, "critical",
         Esql.has_auth == 1 AND Esql.has_iam == 1, "high",
@@ -166,7 +166,7 @@ CASE(
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `user.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `event.dataset`, `cloud.account.id`, `cloud.provider`, `source.ip`
+- **Required fields**: `user.name`, `@timestamp`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `event.dataset`, `cloud.account.id`, `cloud.provider`, `source.ip`
 - **Minimum volume**: 2+ cloud alerts matching 2+ distinct cloud attack stages for same `user.name` within 6h
 - **Critical dependency**: Cloud provider audit logging (CloudTrail, Azure Activity Log, GCP Audit Log) must be ingested and generating detection alerts
 

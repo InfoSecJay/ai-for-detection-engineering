@@ -74,7 +74,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.has_vpn_anomaly = MAX(is_vpn_anomaly),
     Esql.has_network_alert = MAX(is_network_alert),
     Esql.has_lateral_movement = MAX(is_lateral_movement),
@@ -90,8 +90,8 @@ FROM .internal.alerts-security.alerts-default
 | WHERE Esql.has_vpn_anomaly == 1
     AND (Esql.has_network_alert == 1 OR Esql.source_countries >= 2)
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.has_vpn_anomaly == 1 AND Esql.has_lateral_movement == 1, "critical",
         Esql.has_vpn_anomaly == 1 AND Esql.has_network_alert == 1, "high",
         Esql.has_vpn_anomaly == 1 AND Esql.source_countries >= 2, "medium",

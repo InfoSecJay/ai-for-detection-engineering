@@ -8,7 +8,7 @@
 - **Tier:** 4 — Meta-Correlation
 - **Author:** Detection Engineering
 - **Description:** Detect coordinated activity where three or more distinct entities perform the same MITRE ATT&CK tactic within a 15-minute window. This pattern indicates either a coordinated attack (ransomware deployment, worm propagation, coordinated credential harvesting) or a mass administrative action. The time-tactic co-occurrence across multiple entities is the distinguishing signal.
-- **Join Key(s):** `time_bucket` + `kibana.alert.rule.parameters.threat.tactic.name`
+- **Join Key(s):** `time_bucket` + `kibana.alert.rule.threat.tactic.name`
 - **Lookback:** 1 hour
 - **Schedule:** Every 10 minutes
 - **Priority:** P1
@@ -21,7 +21,7 @@
 FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 1 HOURS
     AND kibana.alert.workflow_status == "open"
-    AND kibana.alert.rule.parameters.threat.tactic.name IS NOT NULL
+    AND kibana.alert.rule.threat.tactic.name IS NOT NULL
 | EVAL
     time_bucket = BUCKET(@timestamp, 15 minutes),
     entity = COALESCE(user.name, host.name),
@@ -78,20 +78,20 @@ FROM .internal.alerts-security.alerts-default
     Esql.domain_values = VALUES(domain_category),
     Esql.entity_values = VALUES(entity),
     Esql.host_values = VALUES(host.name)
-  BY time_bucket, kibana.alert.rule.parameters.threat.tactic.name
+  BY time_bucket, kibana.alert.rule.threat.tactic.name
 | WHERE Esql.entity_count >= 3 AND Esql.host_spread >= 3
 | EVAL
     Esql.coordination_score = ROUND(Esql.risk_score
         * CASE(Esql.entity_count >= 10, 2.0, Esql.entity_count >= 5, 1.5, 1.0)
         * CASE(Esql.host_spread >= 10, 1.5, Esql.host_spread >= 5, 1.25, 1.0)),
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.entity_count >= 10, "critical",
         Esql.entity_count >= 5, "high",
         Esql.entity_count >= 3, "medium",
         "low"
     ),
     Esql.description = CONCAT(
-        "Coordinated ", kibana.alert.rule.parameters.threat.tactic.name,
+        "Coordinated ", kibana.alert.rule.threat.tactic.name,
         " at ", TO_STRING(time_bucket),
         " | ", TO_STRING(Esql.entity_count), " entities",
         " | ", TO_STRING(Esql.host_spread), " hosts",
@@ -141,13 +141,13 @@ Coordination score multipliers: entity_count >= 10 = 2.0x, >= 5 = 1.5x. Host spr
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `kibana.alert.rule.parameters.threat.tactic.name`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `@timestamp`
+- **Required fields**: `kibana.alert.rule.threat.tactic.name`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `@timestamp`
 - **Minimum volume**: 3+ distinct entities with the same tactic in the same 15-minute window
 
 ## Dependencies
 
 - **Required**: None.
-- **Upstream**: Requires detection rules to have MITRE ATT&CK tactic mappings populated in `kibana.alert.rule.parameters.threat.tactic.name`.
+- **Upstream**: Requires detection rules to have MITRE ATT&CK tactic mappings populated in `kibana.alert.rule.threat.tactic.name`.
 
 ## Validation
 

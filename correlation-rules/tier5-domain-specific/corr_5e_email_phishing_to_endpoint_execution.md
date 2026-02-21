@@ -62,7 +62,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
+    Esql.total_risk_score = SUM(alert_risk),
     Esql.email_alert_count = SUM(is_email),
     Esql.endpoint_alert_count = SUM(is_endpoint),
     Esql.email_alert_time = MIN(email_ts),
@@ -80,8 +80,8 @@ FROM .internal.alerts-security.alerts-default
     AND Esql.endpoint_alert_time > Esql.email_alert_time
 | EVAL
     Esql.time_gap_minutes = DATE_DIFF("minute", Esql.email_alert_time, Esql.endpoint_alert_time),
-    Esql.risk_score = ROUND(Esql.total_risk * 2.0),
-    Esql.severity = CASE(
+    Esql.risk_score = ROUND(Esql.total_risk_score * 2.0),
+    Esql.correlation_severity = CASE(
         Esql.has_execution == 1 AND Esql.email_alert_count >= 1, "critical",
         Esql.endpoint_alert_count >= 1 AND Esql.email_alert_count >= 1, "high",
         "medium"

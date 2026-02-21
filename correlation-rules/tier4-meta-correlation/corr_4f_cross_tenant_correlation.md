@@ -81,7 +81,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
     Esql.max_severity_weight = MAX(severity_weight),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.user_values = VALUES(user.name)
   BY shared_ioc
@@ -90,7 +90,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.cross_tenant_score = ROUND(Esql.risk_score
         * CASE(Esql.tenant_count >= 3, 2.0, Esql.tenant_count >= 2, 1.5, 1.0)
         * CASE(Esql.entity_count >= 5, 1.5, 1.0)),
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.tenant_count >= 3, "critical",
         Esql.tenant_count >= 2 AND Esql.max_severity_weight >= 15, "high",
         Esql.tenant_count >= 2, "medium",
@@ -144,7 +144,7 @@ Cross-tenant score multipliers: tenant_count >= 3 = 2.0x, >= 2 = 1.5x. Entity co
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `process.hash.sha256`, `destination.ip`, `dns.question.name`, `cloud.account.id`, `observer.name`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `@timestamp`
+- **Required fields**: `process.hash.sha256`, `destination.ip`, `dns.question.name`, `cloud.account.id`, `observer.name`, `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `@timestamp`
 - **Minimum volume**: 1+ alert with a shared IOC from 2+ distinct tenant identifiers in 24h
 
 ## Dependencies

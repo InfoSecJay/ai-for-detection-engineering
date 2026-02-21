@@ -61,8 +61,8 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
-    Esql.technique_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.technique.id),
+    Esql.total_risk_score = SUM(alert_risk),
+    Esql.technique_count = COUNT_DISTINCT(kibana.alert.rule.threat.technique.name),
     Esql.has_priv_escalation = MAX(is_priv_escalation),
     Esql.has_host_access = MAX(is_host_access),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -75,8 +75,8 @@ FROM .internal.alerts-security.alerts-default
   BY Esql.container_key
 | WHERE Esql.technique_count >= 2
 | EVAL
-    Esql.risk_score = Esql.total_risk,
-    Esql.severity = CASE(
+    Esql.risk_score = Esql.total_risk_score,
+    Esql.correlation_severity = CASE(
         Esql.has_priv_escalation == 1 AND Esql.has_host_access == 1, "critical",
         Esql.has_priv_escalation == 1, "high",
         Esql.technique_count >= 2, "medium",
@@ -129,7 +129,7 @@ Filters to container-related alerts by matching on container and cloud datasets.
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `container.id`, `cloud.instance.id`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.name`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.parameters.threat.technique.id`, `kibana.alert.rule.threat.tactic.name`, `@timestamp`, `host.name`, `user.name`, `container.name`, `container.image.name`
+- **Required fields**: `container.id`, `cloud.instance.id`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.name`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.threat.technique.name`, `kibana.alert.rule.threat.tactic.name`, `@timestamp`, `host.name`, `user.name`, `container.name`, `container.image.name`
 - **Minimum data sources**: At least one container security or cloud workload protection integration with container-aware detection rules
 - **Minimum volume**: 2+ container-related alerts with distinct techniques for same container/instance within 2h
 

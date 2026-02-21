@@ -78,14 +78,14 @@ FROM .internal.alerts-security.alerts-default
     Esql.risk_score = SUM(alert_risk),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.tactic.name),
-    Esql.tactic_values = VALUES(kibana.alert.rule.parameters.threat.tactic.name),
+    Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
+    Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.user_values = VALUES(user.name)
   BY entity
 | WHERE Esql.total_count >= 10 AND Esql.rule_diversity >= 3
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.rule_diversity >= 5 AND Esql.domain_count >= 3, "high",
         Esql.rule_diversity >= 3 AND Esql.total_count >= 15, "high",
         Esql.total_count >= 10, "medium",
@@ -143,7 +143,7 @@ No critical severity -- by definition, this rule only processes low and medium s
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.parameters.threat.tactic.name`, `@timestamp`
+- **Required fields**: `user.name`, `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.workflow_status`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.name`, `kibana.alert.rule.threat.tactic.name`, `@timestamp`
 - **Minimum volume**: 10+ low/medium severity alerts from 3+ distinct rules for the same entity in 24h
 
 ## Dependencies

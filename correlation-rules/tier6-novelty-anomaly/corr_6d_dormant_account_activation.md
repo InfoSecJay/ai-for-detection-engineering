@@ -73,7 +73,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.source_ips = VALUES(source.ip)
   BY user.name
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.days_dormant >= 365, "critical",
         Esql.days_dormant >= 180, "high",
         Esql.days_dormant >= 90, "medium",

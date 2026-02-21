@@ -17,6 +17,8 @@
 
 ## Query
 
+**NOTE**: This rule requires redesign. The LOOKUP JOIN on a post-aggregation computed field (`Esql.tactic_combination`) is not supported in ES|QL. See audit-report.md for details.
+
 ```esql
 FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 24 HOURS
@@ -53,7 +55,7 @@ FROM .internal.alerts-security.alerts-default
 | LOOKUP JOIN lookup-rule-baselines ON Esql.tactic_combination
 | WHERE known_tactic_pairs IS NULL OR known_tactic_pairs == false
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.tactic_count >= 3 AND Esql.max_severity >= 15, "high",
         Esql.tactic_count >= 2 AND Esql.max_severity >= 15, "high",
         Esql.tactic_count >= 2, "medium",

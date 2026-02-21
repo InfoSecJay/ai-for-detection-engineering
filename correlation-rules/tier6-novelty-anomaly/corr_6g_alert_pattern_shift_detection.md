@@ -61,7 +61,7 @@ FROM .internal.alerts-security.alerts-default
     )
 | WHERE Esql.pattern_shift_score >= 4.0
 | EVAL
-    Esql.severity = CASE(
+    Esql.correlation_severity = CASE(
         Esql.pattern_shift_score >= 7.0 AND Esql.current_count >= 20, "high",
         Esql.pattern_shift_score >= 5.0, "medium",
         "low"

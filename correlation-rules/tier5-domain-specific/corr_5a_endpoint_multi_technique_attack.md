@@ -41,9 +41,9 @@ FROM .internal.alerts-security.alerts-default
     Esql.alert_count = COUNT(*),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.total_risk = SUM(alert_risk),
-    Esql.technique_count = COUNT_DISTINCT(kibana.alert.rule.parameters.threat.technique.id),
-    Esql.technique_values = VALUES(kibana.alert.rule.parameters.threat.technique.id),
+    Esql.total_risk_score = SUM(alert_risk),
+    Esql.technique_count = COUNT_DISTINCT(kibana.alert.rule.threat.technique.name),
+    Esql.technique_values = VALUES(kibana.alert.rule.threat.technique.name),
     Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -54,8 +54,8 @@ FROM .internal.alerts-security.alerts-default
   BY host.name
 | WHERE Esql.technique_count >= 3
 | EVAL
-    Esql.risk_score = ROUND(Esql.total_risk * Esql.technique_count),
-    Esql.severity = CASE(
+    Esql.risk_score = ROUND(Esql.total_risk_score * Esql.technique_count),
+    Esql.correlation_severity = CASE(
         Esql.technique_count >= 5, "critical",
         Esql.technique_count >= 4, "high",
         Esql.technique_count >= 3, "medium",
@@ -91,7 +91,7 @@ Filters exclusively to the endpoint domain using `event.dataset` pattern matchin
   - Attacks using a single technique repeatedly (e.g., pure credential dumping) will not trigger this rule -- use Tier 1 host-centric correlation instead
   - Fileless attacks that do not generate endpoint alerts (e.g., pure identity-layer attacks)
   - Endpoints without EDR coverage produce no alerts to correlate
-  - Technique IDs must be populated in `kibana.alert.rule.parameters.threat.technique.id` -- rules without ATT&CK mappings are invisible
+  - Technique names must be populated in `kibana.alert.rule.threat.technique.name` -- rules without ATT&CK mappings are invisible
 
 - **False Positives:**
   - **Red team exercises**: Penetration testers running multi-technique toolkits on a single host. Mitigation: exclude red team hosts by name or tag during engagement windows.
@@ -107,7 +107,7 @@ Filters exclusively to the endpoint domain using `event.dataset` pattern matchin
 ## Data Requirements
 
 - **Index**: `.internal.alerts-security.alerts-default`
-- **Required fields**: `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.parameters.threat.technique.id`, `kibana.alert.rule.threat.tactic.name`, `kibana.alert.rule.name`, `@timestamp`, `user.name`, `process.name`, `file.path`
+- **Required fields**: `host.name`, `event.dataset`, `signal.rule.severity`, `kibana.alert.rule.building_block_type`, `kibana.alert.rule.threat.technique.name`, `kibana.alert.rule.threat.tactic.name`, `kibana.alert.rule.name`, `@timestamp`, `user.name`, `process.name`, `file.path`
 - **Minimum data sources**: At least one endpoint EDR integration (Elastic Defend, SentinelOne, CrowdStrike, Microsoft Defender, Carbon Black, or Sysmon)
 - **Minimum volume**: 3+ endpoint alerts with distinct technique IDs on same host within 2h
 
