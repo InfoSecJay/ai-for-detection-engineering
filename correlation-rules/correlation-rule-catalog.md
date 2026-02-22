@@ -17,7 +17,7 @@ This catalog contains 55 production-ready ES|QL correlation rules for Elastic Se
 ```
 correlation-rules/
 ├── correlation-rule-catalog.md          ← this file (overview + conventions + deployment guide)
-├── audit-report.md                     ← audit findings and remediation status
+├── TODO.md                             ← remaining work items and known limitations
 ├── tier1-entity-centric/                ← 8 rules (CORR-1A through CORR-1H)
 ├── tier2-kill-chain-behavioral/         ← 10 rules (CORR-2A through CORR-2J)
 ├── tier3-risk-accumulation/             ← 5 rules (CORR-3A through CORR-3E)
