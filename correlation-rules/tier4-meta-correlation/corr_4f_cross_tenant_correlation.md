@@ -24,7 +24,16 @@ FROM .internal.alerts-security.alerts-default
 | EVAL
     shared_ioc = COALESCE(process.hash.sha256, destination.ip, dns.question.name),
     tenant_id = COALESCE(cloud.account.id, observer.name),
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -70,8 +79,9 @@ FROM .internal.alerts-security.alerts-default
 | STATS
     Esql.tenant_count = COUNT_DISTINCT(tenant_id),
     Esql.tenant_values = VALUES(tenant_id),
-    Esql.entity_count = COUNT_DISTINCT(entity),
-    Esql.entity_values = VALUES(entity),
+    Esql.entity_count = COUNT_DISTINCT(entity_value),
+    Esql.entity_types = VALUES(entity_type),
+    Esql.entity_values = VALUES(entity_value),
     Esql.alert_count = COUNT(*),
     Esql.risk_score = SUM(alert_risk),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -110,7 +120,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Flattens each alert into its shared IOC using `COALESCE(process.hash.sha256, destination.ip, dns.question.name)`, then aggregates by that IOC across `cloud.account.id` values. The rule fires when 2+ distinct tenants/accounts share the same IOC. For organizations with multiple Elastic deployments behind a single SIEM, `observer.name` can serve as the tenant differentiator instead of `cloud.account.id`. Entity count provides spread context within each tenant. This rule is only relevant for organizations with multiple cloud accounts or tenants feeding into the same Elastic cluster.
+Flattens each alert into its shared IOC using `COALESCE(process.hash.sha256, destination.ip, dns.question.name)`, then aggregates by that IOC across `cloud.account.id` values. Each entity is represented as a typed composite key (`entity_type` + `entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host. The rule fires when 2+ distinct tenants/accounts share the same IOC. For organizations with multiple Elastic deployments behind a single SIEM, `observer.name` can serve as the tenant differentiator instead of `cloud.account.id`. Entity count provides spread context within each tenant. This rule is only relevant for organizations with multiple cloud accounts or tenants feeding into the same Elastic cluster.
 
 ## Severity Logic
 

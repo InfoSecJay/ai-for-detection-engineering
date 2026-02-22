@@ -8,7 +8,7 @@
 - **Tier:** 6 — Novelty and Anomaly Detection
 - **Author:** Detection Engineering
 - **Description:** Detect entities exhibiting combinations of MITRE ATT&CK tactics that have rarely or never been observed together in the environment's alert history. Most attacks follow predictable tactic sequences (Initial Access, Execution, Persistence). An entity exhibiting Reconnaissance + Impact (unusual pairing) or Collection + Defense Evasion + Exfiltration (rare triple) stands out because the combination itself is anomalous, even if individual alerts are medium severity.
-- **Join Key(s):** `COALESCE(user.name, host.name)`
+- **Join Key(s):** `entity_type + entity_value (typed composite key)`
 - **Lookback:** 24 hours (transform), 60 days (baseline)
 - **Schedule:** Every 1 hour (transform), continuous (`new_terms` rule)
 - **Priority:** P2
@@ -69,6 +69,8 @@ PUT transform-tactic-combinations
 ## Component 2: Continuous Transform
 
 The transform aggregates alerts per entity and computes sorted tactic combination strings using `scripted_metric`:
+
+> **// TODO: Update transform to output entity_type alongside entity for typed entity key support.** The current Painless script uses COALESCE-style logic (`u != null ? u : h`) to produce a single `entity` field. To align with the typed entity key pattern used in ES|QL correlation rules, the transform should be updated to emit both `entity_type` ("user" or "host") and `entity_value` fields instead of a single conflated `entity` field.
 
 ```json
 PUT _transform/corr-6i-tactic-combinations

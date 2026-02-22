@@ -78,6 +78,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.user_count = COUNT_DISTINCT(user.name),
     Esql.ip_values = VALUES(related.ip)
   BY host.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME host.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS host.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.technique_count >= 2
 | EVAL
     Esql.risk_score = ROUND(Esql.total_risk_score * Esql.technique_count),
@@ -103,7 +118,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Filters alerts to only those with the Credential Access tactic. Each alert's rule name is pattern-matched against known credential access technique categories to classify the technique type. STATS aggregates by `host.name` and counts distinct technique types. Hosts with 2+ distinct credential techniques pass filtering. The risk score is multiplied by the technique count — more techniques = higher confidence of deliberate credential harvesting.
+Filters alerts to only those with the Credential Access tactic. Each alert's rule name is pattern-matched against known credential access technique categories to classify the technique type. STATS aggregates by `host.name` and counts distinct technique types. Hosts with 2+ distinct credential techniques pass filtering. The risk score is multiplied by the technique count — more techniques = higher confidence of deliberate credential harvesting. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -151,7 +166,7 @@ CASE(
 
 - No required lookup indices
 - Prerequisite: Detection rules for credential access techniques (LSASS access, Kerberoasting, DCSync, etc.) must be deployed
-- Optional: `lookup-critical-assets` — escalate severity for domain controllers and credential stores
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 
 ## Validation
 

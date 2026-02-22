@@ -8,7 +8,7 @@
 - **Tier:** 4 — Meta-Correlation
 - **Author:** Detection Engineering
 - **Description:** Detect entities accumulating a high volume of individually insignificant alerts (low and medium severity) from diverse detection rules over 24 hours. A single low-severity building block alert is noise. Ten low-severity alerts from three different rules across multiple detection domains for the same entity is a pattern. This rule catches slow-burn reconnaissance, persistent low-and-slow attacks, and misconfigured systems that deserve investigation despite never triggering a single high-severity alert.
-- **Join Key(s):** `COALESCE(user.name, host.name)`
+- **Join Key(s):** `entity_type + entity_value (typed composite key)`
 - **Lookback:** 24 hours
 - **Schedule:** Every 1 hour
 - **Priority:** P2
@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND signal.rule.severity IN ("low", "medium")
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -65,7 +74,7 @@ FROM .internal.alerts-security.alerts-default
     is_low = CASE(signal.rule.severity == "low", 1, 0),
     is_medium = CASE(signal.rule.severity == "medium", 1, 0),
     is_bbr = CASE(kibana.alert.rule.building_block_type == "default", 1, 0)
-| WHERE entity IS NOT NULL
+| WHERE entity_value IS NOT NULL AND entity_value != "unknown"
 | STATS
     Esql.total_count = COUNT(*),
     Esql.low_count = SUM(is_low),
@@ -82,7 +91,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.user_values = VALUES(user.name)
-  BY entity
+  BY entity_type, entity_value
 | WHERE Esql.total_count >= 10 AND Esql.rule_diversity >= 3
 | EVAL
     Esql.correlation_severity = CASE(
@@ -92,7 +101,7 @@ FROM .internal.alerts-security.alerts-default
         "low"
     ),
     Esql.description = CONCAT(
-        "Low-severity cluster for ", entity,
+        "Low-severity cluster for ", entity_type, ":", entity_value,
         " | ", TO_STRING(Esql.total_count), " alerts (",
         TO_STRING(Esql.low_count), " low, ",
         TO_STRING(Esql.medium_count), " medium, ",
@@ -109,7 +118,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Filters to only low and medium severity alerts (and preferentially building block rules) to isolate the signal that Tiers 1-3 would not surface on their own. Aggregates by entity and counts total alerts, rule diversity (`COUNT_DISTINCT(kibana.alert.rule.name)`), and domain diversity. The rule fires when total count >= 10 AND rule diversity >= 3 -- ensuring the cluster is not just a single noisy rule firing repeatedly. Risk is the sum of individual alert_risk scores, which naturally accumulates from many small contributions. The rule diversity filter is the critical differentiator: it distinguishes "ten different suspicious behaviors" from "the same false positive firing ten times."
+Filters to only low and medium severity alerts (and preferentially building block rules) to isolate the signal that Tiers 1-3 would not surface on their own. Each entity is represented as a typed composite key (`entity_type` + `entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host. Aggregates by `entity_type, entity_value` and counts total alerts, rule diversity (`COUNT_DISTINCT(kibana.alert.rule.name)`), and domain diversity. The rule fires when total count >= 10 AND rule diversity >= 3 -- ensuring the cluster is not just a single noisy rule firing repeatedly. Risk is the sum of individual alert_risk scores, which naturally accumulates from many small contributions. The rule diversity filter is the critical differentiator: it distinguishes "ten different suspicious behaviors" from "the same false positive firing ten times."
 
 ## Severity Logic
 
@@ -126,7 +135,7 @@ No critical severity -- by definition, this rule only processes low and medium s
 - **Blind Spots:**
   - **Truly random noise**: Coincidental low-severity alerts from unrelated sources hitting the same entity. The rule_diversity >= 3 filter mitigates this but cannot eliminate it entirely.
   - **Single noisy rule**: If one misconfigured rule fires 50 times for an entity, rule_diversity = 1, so CORR-4C will not fire. This is by design -- repeated false positives from one rule are a tuning problem, not a correlation signal.
-  - **Alerts without entity fields**: Alerts where both `user.name` and `host.name` are NULL are excluded.
+  - **Alerts without entity fields**: Alerts where both `user.name` and `host.name` are NULL produce `entity_value = "unknown"` and are excluded.
 
 - **False Positives:**
   - **Misconfigured endpoints**: Endpoints with broken configurations (e.g., disabled services, missing patches) that trigger multiple low-severity rules chronically. Mitigation: investigate the root cause and either fix the configuration or create targeted suppressions.

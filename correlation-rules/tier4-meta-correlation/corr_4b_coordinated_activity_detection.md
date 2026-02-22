@@ -24,7 +24,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.rule.threat.tactic.name IS NOT NULL
 | EVAL
     time_bucket = BUCKET(@timestamp, 15 minutes),
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -65,9 +74,9 @@ FROM .internal.alerts-security.alerts-default
     ),
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor)
-| WHERE entity IS NOT NULL
+| WHERE entity_value IS NOT NULL AND entity_value != "unknown"
 | STATS
-    Esql.entity_count = COUNT_DISTINCT(entity),
+    Esql.entity_count = COUNT_DISTINCT(entity_value),
     Esql.alert_count = COUNT(*),
     Esql.host_spread = COUNT_DISTINCT(host.name),
     Esql.user_spread = COUNT_DISTINCT(user.name),
@@ -76,7 +85,8 @@ FROM .internal.alerts-security.alerts-default
     Esql.rule_names = VALUES(kibana.alert.rule.name),
     Esql.domain_count = COUNT_DISTINCT(domain_category),
     Esql.domain_values = VALUES(domain_category),
-    Esql.entity_values = VALUES(entity),
+    Esql.entity_types = VALUES(entity_type),
+    Esql.entity_values = VALUES(entity_value),
     Esql.host_values = VALUES(host.name)
   BY time_bucket, kibana.alert.rule.threat.tactic.name
 | WHERE Esql.entity_count >= 3 AND Esql.host_spread >= 3
@@ -106,7 +116,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Buckets alerts into 15-minute time windows using `BUCKET(@timestamp, 15 minutes)`, then aggregates by the combination of time bucket and tactic. The rule fires when 3+ distinct entities and 3+ distinct hosts appear in the same tactic-time bucket. This catches coordinated lateral movement (multiple hosts executing the same tactic simultaneously), synchronized ransomware detonation, and worm-like propagation. The 15-minute bucket size balances granularity (catching tight coordination) with tolerance (allowing for slight timing variations in propagation).
+Buckets alerts into 15-minute time windows using `BUCKET(@timestamp, 15 minutes)`, then aggregates by the combination of time bucket and tactic. Each entity is represented as a typed composite key (`entity_type` + `entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host. The rule fires when 3+ distinct entities and 3+ distinct hosts appear in the same tactic-time bucket. This catches coordinated lateral movement (multiple hosts executing the same tactic simultaneously), synchronized ransomware detonation, and worm-like propagation. The 15-minute bucket size balances granularity (catching tight coordination) with tolerance (allowing for slight timing variations in propagation).
 
 ## Severity Logic
 

@@ -71,6 +71,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.user_count = COUNT_DISTINCT(user.name),
     Esql.ip_values = VALUES(related.ip)
   BY host.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME host.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS host.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | EVAL
     Esql.stages_present = Esql.has_collection + Esql.has_staging + Esql.has_exfiltration
 | WHERE Esql.stages_present >= 2
@@ -101,7 +116,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is mapped to a data theft stage using CASE logic: Collection tactic alerts map to "collection", alerts with rule names matching archive/compress/staging patterns map to "staging", and Exfiltration tactic alerts or alerts matching large outbound transfer patterns map to "exfiltration". STATS aggregates by `host.name` to determine which stages are present. Hosts with 2+ stages pass filtering. The risk score is multiplied by the number of stages present — all 3 stages = 3x multiplier, reflecting a complete data theft pipeline.
+Each alert is mapped to a data theft stage using CASE logic: Collection tactic alerts map to "collection", alerts with rule names matching archive/compress/staging patterns map to "staging", and Exfiltration tactic alerts or alerts matching large outbound transfer patterns map to "exfiltration". STATS aggregates by `host.name` to determine which stages are present. Hosts with 2+ stages pass filtering. The risk score is multiplied by the number of stages present — all 3 stages = 3x multiplier, reflecting a complete data theft pipeline. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -152,7 +167,7 @@ CASE(
 
 - No required lookup indices
 - Prerequisite: Detection rules covering Collection, archive/compress, and Exfiltration tactics must be deployed
-- Optional: `lookup-critical-assets` — escalate severity for hosts containing sensitive data
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Complementary: DLP (Data Loss Prevention) alerts fed into the security alerts index significantly improve exfiltration stage detection
 
 ## Validation

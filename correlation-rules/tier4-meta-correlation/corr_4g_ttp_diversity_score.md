@@ -8,7 +8,7 @@
 - **Tier:** 4 — Meta-Correlation
 - **Author:** Detection Engineering
 - **Description:** Detect entities associated with alerts spanning four or more distinct MITRE ATT&CK tactics within 24 hours. High tactic diversity for a single entity is an extremely strong signal of a full-spectrum attack in progress. Legitimate users and systems rarely generate alerts across Initial Access, Execution, Persistence, and Lateral Movement in the same day. An entity touching 4+ tactics is either under active compromise progressing through the kill chain or is a red team exercise. This rule complements Tier 1's cross-domain correlation (which counts detection domains) by counting attack-lifecycle stages (tactics).
-- **Join Key(s):** `COALESCE(user.name, host.name)`
+- **Join Key(s):** `entity_type + entity_value (typed composite key)`
 - **Lookback:** 24 hours
 - **Schedule:** Every 1 hour
 - **Priority:** P2
@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND kibana.alert.rule.threat.tactic.name IS NOT NULL
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -64,7 +73,7 @@ FROM .internal.alerts-security.alerts-default
     ),
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor)
-| WHERE entity IS NOT NULL
+| WHERE entity_value IS NOT NULL AND entity_value != "unknown"
 | STATS
     Esql.unique_tactics = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
@@ -80,7 +89,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.last_seen = MAX(@timestamp),
     Esql.host_values = VALUES(host.name),
     Esql.user_values = VALUES(user.name)
-  BY entity
+  BY entity_type, entity_value
 | WHERE Esql.unique_tactics >= 4
 | EVAL
     Esql.ttp_diversity_ratio = ROUND(TO_DOUBLE(Esql.unique_techniques) / GREATEST(TO_DOUBLE(Esql.alert_count), 1.0), 3),
@@ -94,7 +103,7 @@ FROM .internal.alerts-security.alerts-default
         "low"
     ),
     Esql.description = CONCAT(
-        "TTP diversity for ", entity,
+        "TTP diversity for ", entity_type, ":", entity_value,
         " | ", TO_STRING(Esql.unique_tactics), " tactics: ", TO_STRING(Esql.tactic_values),
         " | ", TO_STRING(Esql.unique_techniques), " techniques",
         " | Diversity ratio: ", TO_STRING(Esql.ttp_diversity_ratio),
@@ -110,7 +119,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Aggregates all alerts by entity and counts distinct MITRE tactics and techniques. The `unique_tactics` count is the primary threshold (>= 4). The TTP diversity ratio (`unique_techniques / alert_count`) measures whether the alerts represent diverse attack behaviors or the same technique repeating. A high ratio (closer to 1.0) means every alert is a different technique -- indicating a sophisticated, multi-faceted attack. A low ratio means the same technique is generating many alerts -- indicating either a persistent single-vector attack or a noisy rule.
+Aggregates all alerts by typed entity key (`entity_type, entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host, and counts distinct MITRE tactics and techniques. The `unique_tactics` count is the primary threshold (>= 4). The TTP diversity ratio (`unique_techniques / alert_count`) measures whether the alerts represent diverse attack behaviors or the same technique repeating. A high ratio (closer to 1.0) means every alert is a different technique -- indicating a sophisticated, multi-faceted attack. A low ratio means the same technique is generating many alerts -- indicating either a persistent single-vector attack or a noisy rule.
 
 ## Severity Logic
 

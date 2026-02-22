@@ -57,6 +57,24 @@ FROM .internal.alerts-security.alerts-default
     Esql.user_values = VALUES(user.name),
     Esql.process_names = VALUES(process.name)
   BY process.hash.sha256
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+// NOTE: lookup-critical-assets must contain process hash entries (as entity_name values)
+// for this enrichment to work. This is uncommon — consider skipping this block
+// unless you maintain a list of critical/known-good process hashes.
+| RENAME process.hash.sha256 AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS process.hash.sha256
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.host_count >= 2 OR Esql.domain_count >= 2
 | EVAL
     Esql.risk_score = ROUND(Esql.total_risk_score
@@ -80,7 +98,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-24-hour lookback (longer than user/host) because binary propagation is slower than interactive attacks. Host-count multiplier heavily amplifies risk for hashes on many hosts (2x for 5+). Empty file hash excluded.
+24-hour lookback (longer than user/host) because binary propagation is slower than interactive attacks. Host-count multiplier heavily amplifies risk for hashes on many hosts (2x for 5+). Empty file hash excluded. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier (1.5x for critical assets, 1.2x for high) to amplify risk scores for known process hashes. If the LOOKUP JOIN is unavailable, remove that block — the rule functions identically but without criticality weighting.
 
 ## Severity Logic
 
@@ -111,7 +129,8 @@ FROM .internal.alerts-security.alerts-default
 
 ## Dependencies
 
-None required. Optional: LOLBin hash exclusion lookup, software deployment hash allow-list.
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query. The rule functions identically but without criticality weighting (multiplier defaults to 1.0).
+- **Optional**: LOLBin hash exclusion lookup, software deployment hash allow-list.
 
 ## Validation
 

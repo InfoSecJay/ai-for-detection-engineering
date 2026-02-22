@@ -22,7 +22,16 @@ FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 1 HOURS
     AND kibana.alert.workflow_status == "open"
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     severity_weight = CASE(
         signal.rule.severity == "critical", 25,
         signal.rule.severity == "high", 15,
@@ -34,11 +43,12 @@ FROM .internal.alerts-security.alerts-default
     alert_risk = ROUND(severity_weight * bbr_factor)
 | STATS
     Esql.current_count = COUNT(*),
-    Esql.current_entities = COUNT_DISTINCT(entity),
+    Esql.current_entities = COUNT_DISTINCT(entity_value),
     Esql.current_hosts = COUNT_DISTINCT(host.name),
     Esql.current_risk = SUM(alert_risk),
     Esql.max_severity = MAX(severity_weight),
-    Esql.entity_values = VALUES(entity),
+    Esql.entity_types = VALUES(entity_type),
+    Esql.entity_values = VALUES(entity_value),
     Esql.host_values = VALUES(host.name),
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name)
   BY kibana.alert.rule.name
@@ -72,7 +82,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Counts current-hour alert volume per rule using `STATS...BY kibana.alert.rule.name`, then joins against `lookup-rule-baselines` to compare with historical averages. The baseline provides `avg_daily_alerts` and `std_dev_alerts`; the rule derives hourly averages as `avg_daily_alerts / 24`. The surge ratio (`current_count / baseline_hourly_avg`) must reach 5.0x with a minimum of 10 current alerts. Entity spread (`current_entities / baseline_entity_avg`) provides a secondary signal: a rule suddenly affecting many more entities than usual indicates environmental spread, not just repeated alerts on one host.
+Counts current-hour alert volume per rule using `STATS...BY kibana.alert.rule.name`, then joins against `lookup-rule-baselines` to compare with historical averages. Each entity is represented as a typed composite key (`entity_type` + `entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host. The baseline provides `avg_daily_alerts` and `std_dev_alerts`; the rule derives hourly averages as `avg_daily_alerts / 24`. The surge ratio (`current_count / baseline_hourly_avg`) must reach 5.0x with a minimum of 10 current alerts. Entity spread (`current_entities / baseline_entity_avg`) provides a secondary signal: a rule suddenly affecting many more entities than usual indicates environmental spread, not just repeated alerts on one host.
 
 ## Severity Logic
 

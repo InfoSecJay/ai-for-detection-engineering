@@ -81,6 +81,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.host_count = COUNT_DISTINCT(host.name),
     Esql.ip_values = VALUES(related.ip)
   BY user.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME user.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS user.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.admin_alert_count >= 1
     AND Esql.non_admin_alert_count >= 1
     AND Esql.earliest_admin > Esql.earliest_non_admin
@@ -108,7 +123,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is evaluated for indicators of admin/elevated context: user roles containing "admin", processes commonly used for administration (e.g., `powershell.exe` with admin-context rule names), or Windows SIDs ending in `-500` (local Administrator). INLINE STATS computes the earliest timestamp for non-admin alerts and the earliest timestamp for admin-context alerts per user. The rule filters for users where the admin-context alert occurs after the non-admin alert. A 2.0x risk multiplier is applied because confirmed privilege escalation is a high-severity progression.
+Each alert is evaluated for indicators of admin/elevated context: user roles containing "admin", processes commonly used for administration (e.g., `powershell.exe` with admin-context rule names), or Windows SIDs ending in `-500` (local Administrator). INLINE STATS computes the earliest timestamp for non-admin alerts and the earliest timestamp for admin-context alerts per user. The rule filters for users where the admin-context alert occurs after the non-admin alert. A 2.0x risk multiplier is applied because confirmed privilege escalation is a high-severity progression. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -155,7 +170,7 @@ CASE(
 ## Dependencies
 
 - No required lookup indices
-- Optional: `lookup-critical-assets` — escalate severity for privileged hosts
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Optional: PIM/PAM integration via lookup index to suppress approved privilege requests
 
 ## Validation

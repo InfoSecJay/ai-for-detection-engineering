@@ -94,6 +94,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.host_count = COUNT_DISTINCT(host.name),
     Esql.ip_values = VALUES(related.ip)
   BY user.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME user.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS user.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.identity_alert_count >= 1
     AND Esql.endpoint_alert_count >= 1
     AND Esql.earliest_identity <= Esql.earliest_endpoint
@@ -123,7 +138,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-All alerts for a user are domain-categorized. STATS computes per-domain alert counts and earliest timestamps for each user. The rule filters for users who have at least one identity-domain alert AND at least one endpoint-domain alert, AND where the identity alert timestamp precedes the endpoint alert timestamp. A 1.5x cross-domain bonus is applied to the risk score because identity-to-endpoint escalation crosses fundamentally different detection surfaces.
+All alerts for a user are domain-categorized. STATS computes per-domain alert counts and earliest timestamps for each user. The rule filters for users who have at least one identity-domain alert AND at least one endpoint-domain alert, AND where the identity alert timestamp precedes the endpoint alert timestamp. A 1.5x cross-domain bonus is applied to the risk score because identity-to-endpoint escalation crosses fundamentally different detection surfaces. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -173,7 +188,7 @@ CASE(
 ## Dependencies
 
 - No required lookup indices
-- Optional: `lookup-critical-assets` — escalate severity for privileged users
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Upstream requirement: Username normalization between IdP and endpoint sources (either at ingest or via lookup)
 
 ## Validation

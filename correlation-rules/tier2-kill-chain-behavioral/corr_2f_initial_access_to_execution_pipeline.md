@@ -76,6 +76,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.user_values = VALUES(user.name),
     Esql.ip_values = VALUES(related.ip)
   BY host.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME host.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS host.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.initial_access_count >= 1
     AND Esql.execution_count >= 1
     AND Esql.earliest_execution > Esql.earliest_initial_access
@@ -105,7 +120,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Alerts are tagged with kill chain stage flags. STATS computes the earliest timestamp for Initial Access alerts and the earliest timestamp for Execution alerts per host. The rule filters for hosts where an Execution alert follows an Initial Access alert. Additional context is extracted: whether the initial access was phishing-related or web-exploit-related for more granular severity classification. A 1.5x risk multiplier is applied for the confirmed initial-access-to-execution chain.
+Alerts are tagged with kill chain stage flags. STATS computes the earliest timestamp for Initial Access alerts and the earliest timestamp for Execution alerts per host. The rule filters for hosts where an Execution alert follows an Initial Access alert. Additional context is extracted: whether the initial access was phishing-related or web-exploit-related for more granular severity classification. A 1.5x risk multiplier is applied for the confirmed initial-access-to-execution chain. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -156,7 +171,7 @@ CASE(
 
 - No required lookup indices
 - Prerequisite: Detection rules covering both Initial Access and Execution tactics must be deployed
-- Optional: `lookup-critical-assets` — escalate severity for high-value hosts
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Complementary: CORR-2A (Kill Chain Progression) will also detect this pattern as part of a broader multi-stage chain
 
 ## Validation

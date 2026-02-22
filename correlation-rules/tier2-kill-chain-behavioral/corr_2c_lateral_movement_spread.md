@@ -72,6 +72,21 @@ FROM .internal.alerts-security.alerts-default
     ),
     Esql.ip_values = VALUES(related.ip)
   BY user.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME user.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS user.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.host_count >= 3
 | EVAL
     Esql.risk_score = ROUND(Esql.total_risk_score * (Esql.host_count / 2)),
@@ -97,7 +112,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Alerts are grouped by `user.name`. The query counts distinct `host.name` values per user. Users with alerts spanning 3+ hosts pass filtering. Alerts tagged with the "Lateral Movement" tactic receive additional weighting. The risk score is amplified by `host_count / 2` — a user touching 6 hosts gets a 3x multiplier. The host count threshold of 3 balances detection sensitivity against the false positive rate from users who routinely access multiple systems.
+Alerts are grouped by `user.name`. The query counts distinct `host.name` values per user. Users with alerts spanning 3+ hosts pass filtering. Alerts tagged with the "Lateral Movement" tactic receive additional weighting. The risk score is amplified by `host_count / 2` — a user touching 6 hosts gets a 3x multiplier. The host count threshold of 3 balances detection sensitivity against the false positive rate from users who routinely access multiple systems. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -145,7 +160,7 @@ CASE(
 ## Dependencies
 
 - No required lookup indices
-- Optional: `lookup-critical-assets` — escalate severity when lateral movement reaches critical assets
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Complementary: CORR-1E (process hash spread) catches lateral movement via binary propagation; CORR-2C catches it via credential reuse
 
 ## Validation

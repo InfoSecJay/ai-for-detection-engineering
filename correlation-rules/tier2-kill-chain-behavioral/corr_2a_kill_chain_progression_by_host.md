@@ -64,6 +64,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.user_count = COUNT_DISTINCT(user.name),
     Esql.ip_values = VALUES(related.ip)
   BY host.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME host.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS host.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | EVAL
     Esql.stage_count = Esql.has_early + Esql.has_mid + Esql.has_late
 | WHERE Esql.stage_count >= 2
@@ -93,7 +108,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is mapped to a kill chain stage using `kibana.alert.rule.threat.tactic.name`. The query computes boolean flags (`has_early`, `has_mid`, `has_late`) per host, then counts how many distinct stages are represented. Hosts with alerts in 2+ stages pass filtering. The risk score is amplified by the stage count — a host with all three stages gets a 3x multiplier because full kill chain traversal within 4 hours is a high-confidence indicator of active compromise.
+Each alert is mapped to a kill chain stage using `kibana.alert.rule.threat.tactic.name`. The query computes boolean flags (`has_early`, `has_mid`, `has_late`) per host, then counts how many distinct stages are represented. Hosts with alerts in 2+ stages pass filtering. The risk score is amplified by the stage count — a host with all three stages gets a 3x multiplier because full kill chain traversal within 4 hours is a high-confidence indicator of active compromise. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -143,7 +158,7 @@ CASE(
 ## Dependencies
 
 - No required lookup indices
-- Optional: `lookup-critical-assets` — escalate severity for production/PCI hosts
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Prerequisite: Detection rules must have MITRE ATT&CK tactic mappings in `kibana.alert.rule.threat.tactic.name`
 
 ## Validation

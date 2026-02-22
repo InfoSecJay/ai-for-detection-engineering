@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND kibana.alert.rule.name IS NOT NULL
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     hour_of_day = DATE_EXTRACT("hour", @timestamp),
     severity_weight = CASE(
         signal.rule.severity == "critical", 25,
@@ -35,11 +44,11 @@ FROM .internal.alerts-security.alerts-default
     alert_risk = ROUND(severity_weight * bbr_factor)
 | STATS
     Esql.current_count = COUNT(*),
-    Esql.current_entities = COUNT_DISTINCT(entity),
+    Esql.current_entities = COUNT_DISTINCT(entity_value),
     Esql.current_risk = SUM(alert_risk),
     Esql.current_max_severity = MAX(severity_weight),
     Esql.current_sources = COUNT_DISTINCT(event.dataset),
-    Esql.entity_values = VALUES(entity),
+    Esql.entity_values = VALUES(entity_value),
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp)

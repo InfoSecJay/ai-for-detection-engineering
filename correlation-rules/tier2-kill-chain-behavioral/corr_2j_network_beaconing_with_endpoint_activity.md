@@ -95,6 +95,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.dest_ports = VALUES(destination.port),
     Esql.ip_values = VALUES(related.ip)
   BY host.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME host.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS host.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.network_alert_count >= 1
     AND Esql.endpoint_alert_count >= 1
 | EVAL
@@ -126,7 +141,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is domain-categorized. STATS computes per-domain presence flags for each host. The rule filters for hosts that have at least one network-domain alert AND at least one endpoint-domain alert. Additional classification checks for C2-indicative patterns (Command and Control tactic, beaconing-related rule names, DNS tunneling). A 1.5x cross-domain bonus is applied because network + endpoint correlation crosses fundamentally different detection surfaces.
+Each alert is domain-categorized. STATS computes per-domain presence flags for each host. The rule filters for hosts that have at least one network-domain alert AND at least one endpoint-domain alert. Additional classification checks for C2-indicative patterns (Command and Control tactic, beaconing-related rule names, DNS tunneling). A 1.5x cross-domain bonus is applied because network + endpoint correlation crosses fundamentally different detection surfaces. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -177,7 +192,7 @@ CASE(
 
 - No required lookup indices
 - Prerequisite: Network-domain detection rules (firewall, NDR, IDS, proxy, DNS) AND endpoint-domain detection rules must both be deployed
-- Optional: `lookup-critical-assets` — escalate severity for critical infrastructure hosts
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Complementary: CORR-1B (Host multi-domain) will also fire for these hosts, but CORR-2J adds specific C2-pattern classification and network-endpoint pairing logic
 
 ## Validation

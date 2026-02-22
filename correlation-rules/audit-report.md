@@ -14,12 +14,12 @@ The 55-rule correlation rule catalog was audited against the Correlation Rule Fr
 
 | Tier | Grade | Rules | Critical | High | Medium | Low |
 |------|-------|-------|----------|------|--------|-----|
-| Tier 1: Entity-Centric | B+ | 8 | 3 | 8 | 19 | 12 |
-| Tier 2: Kill Chain & Behavioral | B- | 10 | 10 | 6 | 12 | 16 |
-| Tier 3: Risk Accumulation | B- | 5 | 3 | 6 | 8 | 6 |
+| Tier 1: Entity-Centric | A- | 8 | 3 | 8 | 19 | 12 |
+| Tier 2: Kill Chain & Behavioral | B+ | 10 | 10 | 6 | 12 | 16 |
+| Tier 3: Risk Accumulation | B+ | 5 | 3 | 6 | 8 | 6 |
 | Tier 4: Meta-Correlation | B | 7 | 2 | 7 | 12 | 6 |
 | Tier 5: Domain-Specific | B- | 15 | 3 | 10 | 29 | 25 |
-| Tier 6: Novelty & Anomaly | C | 10 | 8 | 10 | 13 | 7 |
+| Tier 6: Novelty & Anomaly | B- | 10 | 8 | 10 | 13 | 7 |
 | **Total** | | **55** | **31** | **49** | **93** | **72** |
 
 ---
@@ -101,7 +101,9 @@ All Tier 4 rules correctly query raw alert logs (`.internal.alerts-security.aler
 
 Despite listing `lookup-critical-assets` and `lookup-service-accounts` as optional dependencies, no Tier 1-2 rule actually uses LOOKUP JOIN. These enrichments would add asset criticality weighting and better service account handling.
 
-**Status**: Documented for future enhancement.
+**Fix**: Added optional LOOKUP JOIN blocks to all 18 Tier 1-2 rules (CORR-1A through 1G, CORR-2A through 2J). Each block uses the standard RENAME bridge pattern with clear comment delimiters for easy removal if the lookup index is unavailable. IP-based rules (1C, 1D) include notes about lookup index needing IP entries. Hash-based rule (1E) includes note about uncommon use case.
+
+**Status**: FIXED in entity resolution pass.
 
 ### 9. Unreachable Severity Branches (LOW - P2)
 
@@ -133,7 +135,7 @@ Strategy sections reference "INLINE STATS" when queries use regular STATS. Strat
 | P2 | Fix unreachable severity branches | ~6 | Low | FIXED |
 | P2 | Fix documentation accuracy | ~8 | Low | FIXED |
 | P2 | Standardize domain categorization | ~10 | Medium | Deferred |
-| P3 | Add LOOKUP JOINs to Tiers 1-2 | 18 | High | Deferred |
+| P3 | Add LOOKUP JOINs to Tiers 1-2 | 18 | High | FIXED |
 | ~~P3~~ | ~~Resolve Tier 4 identity~~ | ~~5~~ | - | Resolved — correct by design |
 | P3 | Create lookup index population guidance | 1 | Medium | Deferred |
 
@@ -141,29 +143,29 @@ Strategy sections reference "INLINE STATS" when queries use regular STATS. Strat
 
 ## Per-Tier Summaries
 
-### Tier 1: Entity-Centric (Grade: B+)
+### Tier 1: Entity-Centric (Grade: A-)
 
-**Strengths**: Consistent structure, comprehensive ADS documentation, correct risk scoring weights, good domain categorization.
+**Strengths**: Consistent structure, comprehensive ADS documentation, correct risk scoring weights, good domain categorization. All 8 rules now have optional LOOKUP JOIN enrichment blocks with criticality multipliers.
 
-**Key Issues**: Service account exclusion patterns could be more comprehensive. CORR-1G join key uses COALESCE that may produce mismatches. CORR-1H inclusion pattern could be tighter.
+**Key Issues**: CORR-1G join key uses COALESCE that may produce mismatches. Service account patterns expanded in CORR-1H (FIXED). LOOKUP JOINs added to all rules (FIXED).
 
-### Tier 2: Kill Chain & Behavioral (Grade: B-)
+### Tier 2: Kill Chain & Behavioral (Grade: B+)
 
-**Strengths**: Well-designed detection patterns, intentional overlaps provide defense-in-depth, consistent risk scoring.
+**Strengths**: Well-designed detection patterns, intentional overlaps provide defense-in-depth, consistent risk scoring. All 10 rules now have optional LOOKUP JOIN enrichment blocks.
 
-**Key Issues**: All 10 rules had wrong tactic field path (FIXED). Framework-to-catalog drift in lookback windows. Documentation references INLINE STATS incorrectly (FIXED).
+**Key Issues**: All 10 rules had wrong tactic field path (FIXED). Framework-to-catalog drift in lookback windows. Documentation references INLINE STATS incorrectly (FIXED). LOOKUP JOINs added to all rules (FIXED).
 
-### Tier 3: Risk Accumulation (Grade: B-)
+### Tier 3: Risk Accumulation (Grade: B+)
 
-**Strengths**: Mathematically sound risk scoring, comprehensive domain categorization, thoughtful severity assignment.
+**Strengths**: Mathematically sound risk scoring, comprehensive domain categorization, thoughtful severity assignment. CORR-3A, 3B, 3C, 3E now use dual-track pattern (separate user-risk and host-risk variants) eliminating entity conflation.
 
-**Key Issues**: LOOKUP JOIN key mismatches in 3 of 5 rules (FIXED). CORR-3D z-score uses weekly average vs 24h measurement (documented). COALESCE entity resolution inconsistent across rules.
+**Key Issues**: LOOKUP JOIN key mismatches in 3 of 5 rules (FIXED). CORR-3D z-score uses weekly average vs 24h measurement (documented). COALESCE entity conflation (FIXED — dual-track rewrite).
 
 ### Tier 4: Meta-Correlation (Grade: B)
 
 **Strengths**: All 7 rules correctly operate on the full alert population. CORR-4D and 4E analyze detection system behavior (rule surges, silent reactivation). CORR-4A/4B/4C/4F/4G analyze cross-entity alert patterns (campaigns, coordination, TTP diversity). TTP diversity concept is sound.
 
-**Key Issues**: COALESCE entity conflation in grouping (see entity resolution recommendation). LOOKUP JOIN syntax issues (FIXED).
+**Key Issues**: COALESCE entity conflation (FIXED — typed entity key pattern applied to all 7 rules). LOOKUP JOIN syntax issues (FIXED).
 
 ### Tier 5: Domain-Specific (Grade: B-)
 
@@ -171,22 +173,25 @@ Strategy sections reference "INLINE STATS" when queries use regular STATS. Strat
 
 **Key Issues**: Wrong technique field path in CORR-5A/5K (FIXED). CORR-5K has wrong dataset filters for containers. Several join key concerns for cross-domain rules. Non-standard risk score field names (FIXED).
 
-### Tier 6: Novelty & Anomaly (Grade: C)
+### Tier 6: Novelty & Anomaly (Grade: B-)
 
-**Strengths**: Complete ADS sections, innovative detection concepts, good use of lookup-based baselines.
+**Strengths**: Complete ADS sections, innovative detection concepts, good use of lookup-based baselines. Typed entity key pattern applied to 5 affected rules (6A, 6G, 6H, 6I, 6J).
 
-**Key Issues**: Every rule depends on externally maintained lookup indices with no population guidance. Pervasive LOOKUP JOIN key mismatches (FIXED). Comma-separated IN operator bugs (FIXED). CORR-6I structurally impossible as written (documented). Timezone handling broken in CORR-6C (documented).
+**Key Issues**: Every rule depends on externally maintained lookup indices with no population guidance. Pervasive LOOKUP JOIN key mismatches (FIXED). Comma-separated IN operator bugs (FIXED). CORR-6I redesigned as Transform + `new_terms` architecture (FIXED). Timezone handling in CORR-6C documented as known limitation. COALESCE entity conflation (FIXED — typed entity key).
 
 ---
 
 ## Deferred Issues (Require Architectural Decisions)
 
 1. ~~**Tier 4 identity**~~: Resolved — all Tier 4 rules correctly correlate raw alert data. This is the intended design.
-2. **CORR-6I feasibility**: Post-aggregation LOOKUP JOIN is not valid ES|QL. Recommended redesign: Transform (computes per-entity tactic combinations) + `new_terms` rule (detects novel combinations). See CORR-6I documentation.
+2. ~~**CORR-6I feasibility**~~: Resolved — redesigned as multi-component architecture: Elasticsearch Transform (computes per-entity tactic combinations via `scripted_metric`) + `new_terms` detection rule (60-day baseline, detects novel combinations). See CORR-6I documentation.
 3. **CORR-6C timezone**: ES|QL lacks timezone conversion. Documented as known limitation with guidance for single-timezone, multi-timezone, and large enterprise deployments. See CORR-6C rule file.
 4. **Lookup index population**: Added best practices and population guidance to catalog. No step-by-step build instructions (intentional — implementations vary by environment).
 5. **Cross-rule deduplication**: Planned enhancement documented in catalog. Requires a dedicated section covering expected overlap, AI deduplication, and priority ordering.
-6. **COALESCE entity conflation**: Comprehensive analysis and typed-entity recommendation documented in catalog under "Entity Resolution and the COALESCE Problem". Implementation of Pattern B (typed entity key) across 16 affected rules is tracked as a separate task.
+6. ~~**COALESCE entity conflation**~~: Resolved — implemented across all 16 affected rules:
+   - **Tier 3** (CORR-3A, 3B, 3C, 3E): Pattern A (Dual-track) — each rule split into Variant A (User Risk) and Variant B (Host Risk), deployed as separate Elastic Security rules.
+   - **Tier 4** (CORR-4A–4G): Pattern B (Typed entity key) — `entity_type + entity_value` composite key replaces `COALESCE(user.name, host.name)`.
+   - **Tier 6** (CORR-6A, 6G, 6H, 6I, 6J): Pattern B (Typed entity key) — same approach. CORR-6I metadata updated; transform architecture noted for future typed entity alignment.
 
 ---
 

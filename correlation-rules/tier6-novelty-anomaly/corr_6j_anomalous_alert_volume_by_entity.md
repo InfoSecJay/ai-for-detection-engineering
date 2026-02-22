@@ -8,7 +8,7 @@
 - **Tier:** 6 — Novelty and Anomaly Detection
 - **Author:** Detection Engineering
 - **Description:** Detect entities generating a statistically anomalous volume of alerts relative to their historical baseline. An entity that normally generates 1-2 alerts per 4-hour window suddenly generating 15+ is a significant deviation that warrants investigation regardless of alert severity or type. This rule applies z-score-based statistical anomaly detection to alert volume per entity.
-- **Join Key(s):** `COALESCE(user.name, host.name)`
+- **Join Key(s):** `entity_type + entity_value (typed composite key)`
 - **Lookback:** 4 hours
 - **Schedule:** Every 15 minutes
 - **Priority:** P2
@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND (user.name IS NOT NULL OR host.name IS NOT NULL)
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -68,10 +77,8 @@ FROM .internal.alerts-security.alerts-default
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.source_ips = VALUES(source.ip)
-  BY entity
-| RENAME entity AS entity_value
+  BY entity_type, entity_value
 | LOOKUP JOIN lookup-risk-scores ON entity_value
-| RENAME entity_value AS entity
 | WHERE baseline_avg_4h_count IS NOT NULL AND baseline_stddev IS NOT NULL
 | EVAL
     Esql.volume_zscore = ROUND(
@@ -87,7 +94,7 @@ FROM .internal.alerts-security.alerts-default
         "medium"
     ),
     Esql.description = CONCAT(
-        "Entity ", entity,
+        "Entity ", entity_type, ":", entity_value,
         " alert volume ANOMALY | Z-Score: ", TO_STRING(Esql.volume_zscore),
         " | Current: ", TO_STRING(Esql.current_count), " alerts in 4h",
         " (baseline avg: ", TO_STRING(baseline_avg_4h_count),

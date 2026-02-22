@@ -93,6 +93,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.cloud_providers = VALUES(cloud.provider),
     Esql.ip_values = VALUES(source.ip)
   BY user.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME user.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS user.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | EVAL
     Esql.stages_present = Esql.has_auth + Esql.has_iam + Esql.has_resource
 | WHERE Esql.stages_present >= 2
@@ -123,7 +138,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Each alert is mapped to a cloud attack stage: authentication anomalies (impossible travel, suspicious login, MFA bypass) map to "auth", IAM/role/policy changes map to "iam_change", and resource creation/modification (VM launch, storage creation, Lambda deployment) map to "resource_mod". STATS aggregates by `user.name` to determine which stages are present. Users with 2+ stages pass filtering. The risk score is multiplied by the number of stages present. The 6-hour lookback accommodates the slower pace of cloud attack chains.
+Each alert is mapped to a cloud attack stage: authentication anomalies (impossible travel, suspicious login, MFA bypass) map to "auth", IAM/role/policy changes map to "iam_change", and resource creation/modification (VM launch, storage creation, Lambda deployment) map to "resource_mod". STATS aggregates by `user.name` to determine which stages are present. Users with 2+ stages pass filtering. The risk score is multiplied by the number of stages present. The 6-hour lookback accommodates the slower pace of cloud attack chains. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier to amplify risk for high-value assets. Remove this block if the lookup is unavailable.
 
 ## Severity Logic
 
@@ -174,6 +189,7 @@ CASE(
 
 - No required lookup indices
 - Prerequisite: Cloud detection rules covering authentication anomalies, IAM changes, and resource modifications must be deployed
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query.
 - Optional: `lookup-service-accounts` — exclude known IaC and automation service accounts
 - Complementary: CORR-1F (Cloud Resource correlation) catches cloud instance-centric patterns; CORR-2I catches user-centric cloud attack chains
 

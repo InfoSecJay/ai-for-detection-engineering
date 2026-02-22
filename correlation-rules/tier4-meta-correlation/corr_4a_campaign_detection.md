@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
 | EVAL
     shared_ioc = COALESCE(process.hash.sha256, destination.ip, dns.question.name, url.domain),
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -65,9 +74,9 @@ FROM .internal.alerts-security.alerts-default
     bbr_factor = CASE(kibana.alert.rule.building_block_type == "default", 0.3, 1.0),
     alert_risk = ROUND(severity_weight * bbr_factor)
 | WHERE shared_ioc IS NOT NULL
-    AND entity IS NOT NULL
+    AND entity_value IS NOT NULL AND entity_value != "unknown"
 | STATS
-    Esql.entity_count = COUNT_DISTINCT(entity),
+    Esql.entity_count = COUNT_DISTINCT(entity_value),
     Esql.alert_count = COUNT(*),
     Esql.unique_rules = COUNT_DISTINCT(kibana.alert.rule.name),
     Esql.rule_names = VALUES(kibana.alert.rule.name),
@@ -76,7 +85,8 @@ FROM .internal.alerts-security.alerts-default
     Esql.risk_score = SUM(alert_risk),
     Esql.first_seen = MIN(@timestamp),
     Esql.last_seen = MAX(@timestamp),
-    Esql.entity_values = VALUES(entity),
+    Esql.entity_types = VALUES(entity_type),
+    Esql.entity_values = VALUES(entity_value),
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
@@ -108,7 +118,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Flattens each alert into its most specific IOC using `COALESCE(process.hash.sha256, destination.ip, dns.question.name, url.domain)`, then aggregates by that IOC across all entities. Entity count is computed via `COUNT_DISTINCT(COALESCE(user.name, host.name))` to deduplicate users and hosts into a single entity space. The rule fires when the same IOC spans three or more distinct entities. Risk score is the sum of individual alert risk scores across all entities sharing the IOC. Domain diversity (how many detection domains saw the IOC) provides additional campaign confidence.
+Flattens each alert into its most specific IOC using `COALESCE(process.hash.sha256, destination.ip, dns.question.name, url.domain)`, then aggregates by that IOC across all entities. Each entity is represented as a typed composite key (`entity_type` + `entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host. Entity count is computed via `COUNT_DISTINCT(entity_value)` to deduplicate across the entity space. The rule fires when the same IOC spans three or more distinct entities. Risk score is the sum of individual alert risk scores across all entities sharing the IOC. Domain diversity (how many detection domains saw the IOC) provides additional campaign confidence.
 
 ## Severity Logic
 

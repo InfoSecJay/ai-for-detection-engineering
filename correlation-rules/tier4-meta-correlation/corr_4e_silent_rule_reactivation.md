@@ -8,7 +8,7 @@
 - **Tier:** 4 — Meta-Correlation
 - **Author:** Detection Engineering
 - **Description:** Detect when a detection rule that has not fired in 30 or more days suddenly produces alerts again. A dormant rule reactivating means either a new attack is matching an old signature, infrastructure has changed to expose previously unseen activity, or the rule was recently re-enabled. Dormant rule reactivation is a high-value signal because it represents a novel event in the detection environment -- the security team has not seen this alert in over a month, which means their mental model does not account for it.
-- **Join Key(s):** `kibana.alert.rule.name` + `COALESCE(user.name, host.name)`
+- **Join Key(s):** `kibana.alert.rule.name` + `entity_type + entity_value (typed composite key)`
 - **Lookback:** 24 hours + baseline lookup
 - **Schedule:** Every 1 hour
 - **Priority:** P2
@@ -22,7 +22,16 @@ FROM .internal.alerts-security.alerts-default
 | WHERE @timestamp > NOW() - 24 HOURS
     AND kibana.alert.workflow_status == "open"
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     severity_weight = CASE(
         signal.rule.severity == "critical", 25,
         signal.rule.severity == "high", 15,
@@ -34,8 +43,9 @@ FROM .internal.alerts-security.alerts-default
     alert_risk = ROUND(severity_weight * bbr_factor)
 | STATS
     Esql.alert_count = COUNT(*),
-    Esql.entity_count = COUNT_DISTINCT(entity),
-    Esql.entity_values = VALUES(entity),
+    Esql.entity_count = COUNT_DISTINCT(entity_value),
+    Esql.entity_types = VALUES(entity_type),
+    Esql.entity_values = VALUES(entity_value),
     Esql.host_values = VALUES(host.name),
     Esql.user_values = VALUES(user.name),
     Esql.risk_score = SUM(alert_risk),
@@ -75,7 +85,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Joins current alerts against `lookup-rule-baselines` to retrieve `last_fire_date` per rule. Computes `days_silent = DATE_DIFF("day", last_fire_date, @timestamp)` and filters to rules where `days_silent >= 30`. The rule captures both the reactivated rule name and the entities involved. Severity escalates with dormancy duration and the severity of the reactivated rule -- a critical rule that has been silent for 90 days reactivating is more alarming than a low-severity rule silent for 31 days.
+Joins current alerts against `lookup-rule-baselines` to retrieve `last_fire_date` per rule. Computes `days_silent = DATE_DIFF("day", last_fire_date, @timestamp)` and filters to rules where `days_silent >= 30`. Each entity is represented as a typed composite key (`entity_type` + `entity_value`) using a CASE expression instead of COALESCE, preserving whether the entity is a user or a host. The rule captures both the reactivated rule name and the entities involved. Severity escalates with dormancy duration and the severity of the reactivated rule -- a critical rule that has been silent for 90 days reactivating is more alarming than a low-severity rule silent for 31 days.
 
 ## Severity Logic
 

@@ -8,7 +8,7 @@
 - **Tier:** 6 — Novelty and Anomaly Detection
 - **Author:** Detection Engineering
 - **Description:** Detect entities (users or hosts) triggering detection rules they have never triggered before. A user who has worked at the company for two years and suddenly fires a "Credential Dumping via LSASS" rule for the first time is far more suspicious than a pentester's lab machine that fires it weekly. This rule surfaces the novelty signal that raw alert volume ignores.
-- **Join Key(s):** `COALESCE(user.name, host.name)` + `kibana.alert.rule.name`
+- **Join Key(s):** `entity_type + entity_value (typed composite key)` + `kibana.alert.rule.name`
 - **Lookback:** 24 hours
 - **Schedule:** Every 30 minutes
 - **Priority:** P2
@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND (user.name IS NOT NULL OR host.name IS NOT NULL)
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     rule_name = kibana.alert.rule.name,
     severity_weight = CASE(
         signal.rule.severity == "critical", 25,
@@ -37,9 +46,7 @@ FROM .internal.alerts-security.alerts-default
         signal.rule.severity IN ("high", "critical")
             AND kibana.alert.rule.building_block_type IS NULL, 1, 0
     )
-| RENAME entity AS entity_value
 | LOOKUP JOIN lookup-entity-history ON entity_value, rule_name
-| RENAME entity_value AS entity
 | WHERE last_seen_date IS NULL
 | STATS
     Esql.novel_rules = COUNT_DISTINCT(kibana.alert.rule.name),
@@ -54,7 +61,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.tactic_count = COUNT_DISTINCT(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.data_sources = VALUES(event.dataset)
-  BY entity
+  BY entity_type, entity_value
 | WHERE Esql.novel_rules >= 1
 | EVAL
     Esql.correlation_severity = CASE(
@@ -64,7 +71,7 @@ FROM .internal.alerts-security.alerts-default
         "medium"
     ),
     Esql.description = CONCAT(
-        "Entity ", entity,
+        "Entity ", entity_type, ":", entity_value,
         " triggered ", TO_STRING(Esql.novel_rules), " NEVER-BEFORE-SEEN rules",
         " | Risk: ", TO_STRING(Esql.risk_score),
         " | ", TO_STRING(Esql.alert_count), " novel alerts",

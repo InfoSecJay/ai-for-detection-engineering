@@ -8,7 +8,7 @@
 - **Tier:** 6 — Novelty and Anomaly Detection
 - **Author:** Detection Engineering
 - **Description:** Detect entities appearing in detection domains they have never historically been associated with. A user who has only ever appeared in identity-domain alerts (Okta, Azure AD) suddenly generating endpoint-domain alerts (EDR, Sysmon) represents a fundamental shift in that entity's risk profile. This rule identifies the first time an entity crosses into a new detection domain.
-- **Join Key(s):** `COALESCE(user.name, host.name)`
+- **Join Key(s):** `entity_type + entity_value (typed composite key)`
 - **Lookback:** 24 hours
 - **Schedule:** Every 1 hour
 - **Priority:** P2
@@ -23,7 +23,16 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND (user.name IS NOT NULL OR host.name IS NOT NULL)
 | EVAL
-    entity = COALESCE(user.name, host.name),
+    entity_type = CASE(
+        user.name IS NOT NULL, "user",
+        host.name IS NOT NULL, "host",
+        "unknown"
+    ),
+    entity_value = CASE(
+        user.name IS NOT NULL, user.name,
+        host.name IS NOT NULL, host.name,
+        "unknown"
+    ),
     domain_category = CASE(
         event.dataset LIKE "endpoint*" OR event.dataset LIKE "sentinelone*"
             OR event.dataset LIKE "windows*" OR event.dataset LIKE "sysmon*"
@@ -59,9 +68,7 @@ FROM .internal.alerts-security.alerts-default
         signal.rule.severity IN ("high", "critical")
             AND kibana.alert.rule.building_block_type IS NULL, 1, 0
     )
-| RENAME entity AS entity_value
 | LOOKUP JOIN lookup-entity-history ON entity_value
-| RENAME entity_value AS entity
 | EVAL
     Esql.is_new_domain = CASE(
         known_domains IS NULL, true,
@@ -84,7 +91,7 @@ FROM .internal.alerts-security.alerts-default
     Esql.tactic_values = VALUES(kibana.alert.rule.threat.tactic.name),
     Esql.host_values = VALUES(host.name),
     Esql.source_ips = VALUES(source.ip)
-  BY entity
+  BY entity_type, entity_value
 | EVAL
     Esql.correlation_severity = CASE(
         Esql.max_severity >= 15 AND domain_category == "endpoint", "critical",
@@ -93,7 +100,7 @@ FROM .internal.alerts-security.alerts-default
         "medium"
     ),
     Esql.description = CONCAT(
-        "Entity ", entity,
+        "Entity ", entity_type, ":", entity_value,
         " appeared in ", TO_STRING(Esql.new_domain_count),
         " NEW domain(s): ", TO_STRING(Esql.new_domains),
         " | ", TO_STRING(Esql.new_domain_alerts), " alerts from ",

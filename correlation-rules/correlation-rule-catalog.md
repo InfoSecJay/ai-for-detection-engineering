@@ -265,7 +265,7 @@ Correlation rules use `LOOKUP JOIN` to enrich alert data with contextual informa
 
 | # | Index | Purpose | Key Rules |
 |---|-------|---------|-----------|
-| 1 | `lookup-critical-assets` | Crown jewel systems/users — maps entity names to business criticality tiers. Populate from your CMDB, asset inventory, or manually for top 50 critical assets. | CORR-1A, 1B, 1F, 1H, 3A, 3E, 5A |
+| 1 | `lookup-critical-assets` | Crown jewel systems/users — maps entity names to business criticality tiers. Populate from your CMDB, asset inventory, or manually for top 50 critical assets. | All Tier 1 (1A–1H), all Tier 2 (2A–2J), CORR-3A, 3E, 5A |
 | 2 | `lookup-service-accounts` | Known service accounts with owner team, expected domains, and risk tier. Populate from Active Directory OU, Okta service account groups, or manual inventory. | CORR-1H, 3A, 5B, 5H |
 | 3 | `lookup-peer-baselines` | Department/role risk baselines for peer comparison. Populate via a weekly transform that computes average and standard deviation of risk scores per department. | CORR-3D, 6H |
 | 4 | `lookup-entity-history` | Historical entity-rule associations for novelty detection. Populate via a daily transform that records first-seen dates for entity+rule pairs. | CORR-6A, 6B, 6E, 6F |
@@ -536,13 +536,13 @@ Layer 1: Typed Entity Key (minimum viable fix)
 
 ### Affected Rules
 
-| Tier | Rules | Current Pattern | Recommendation |
-|------|-------|----------------|----------------|
+| Tier | Rules | Pattern | Status |
+|------|-------|---------|--------|
 | Tier 1 | CORR-1A–1H | Already typed (single entity field per rule) | No change needed |
 | Tier 2 | CORR-2A–2J | Already typed (single entity field per rule) | No change needed |
-| Tier 3 | CORR-3A, 3B, 3C, 3E | `COALESCE(user.name, host.name)` | Use typed entity key, or split into separate user-risk and host-risk rules |
-| Tier 4 | CORR-4A–4G | `COALESCE(user.name, host.name)` | Use typed entity key |
-| Tier 6 | CORR-6A, 6G, 6H, 6I, 6J | `COALESCE(user.name, host.name)` | Use typed entity key |
+| Tier 3 | CORR-3A, 3B, 3C, 3E | Pattern A: Dual-track (Variant A: User Risk, Variant B: Host Risk) | FIXED |
+| Tier 4 | CORR-4A–4G | Pattern B: Typed entity key (`entity_type + entity_value`) | FIXED |
+| Tier 6 | CORR-6A, 6G, 6H, 6I, 6J | Pattern B: Typed entity key (`entity_type + entity_value`) | FIXED |
 
 ### ECS Entity Fields Reference
 
@@ -645,6 +645,9 @@ When multiple correlation rules fire for the same entity in the same time window
 - How AI tools (UC-11, UC-12) should deduplicate and merge correlated clusters
 - Priority ordering when the same entity has alerts from multiple tiers
 
-### 4. Entity Resolution Implementation
+### 4. ~~Entity Resolution Implementation~~ — COMPLETED
 
-The typed entity key pattern documented in "Entity Resolution and the COALESCE Problem" should be applied to the 16 affected rules across Tiers 3, 4, and 6. This is tracked separately as an implementation task.
+The entity resolution patterns have been applied to all 16 affected rules:
+- **Tier 3** (4 rules): Pattern A (Dual-track) — each rule split into Variant A (User Risk) and Variant B (Host Risk), deployed as two separate Elastic Security rules per correlation.
+- **Tier 4** (7 rules): Pattern B (Typed entity key) — `entity_type + entity_value` composite key replaces `COALESCE(user.name, host.name)`.
+- **Tier 6** (5 rules): Pattern B (Typed entity key) — same approach. CORR-6I uses Transform architecture with a TODO note for future typed entity alignment in the Painless script.

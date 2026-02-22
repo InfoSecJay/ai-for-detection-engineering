@@ -63,6 +63,23 @@ FROM .internal.alerts-security.alerts-default
     Esql.host_count = COUNT_DISTINCT(host.name),
     Esql.users = VALUES(user.name)
   BY destination.ip
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+// NOTE: lookup-critical-assets must contain IP entries (as entity_name values)
+// for this enrichment to work. If your lookup only has hostnames, skip this block.
+| RENAME destination.ip AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS destination.ip
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.domain_count >= 2 AND (Esql.unique_rules >= 2 OR Esql.source_ip_count >= 2)
 | EVAL
     Esql.risk_score = ROUND(Esql.total_risk_score
@@ -85,7 +102,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Source IP count multiplier amplifies risk when multiple internal hosts reach the same destination — 3+ sources = 1.5x. Three hosts connecting to the same bad IP is a spreading infection or shared watering hole.
+Source IP count multiplier amplifies risk when multiple internal hosts reach the same destination — 3+ sources = 1.5x. Three hosts connecting to the same bad IP is a spreading infection or shared watering hole. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier (1.5x for critical assets, 1.2x for high) to amplify risk scores for high-value destination IP entities. If the LOOKUP JOIN is unavailable, remove that block — the rule functions identically but without criticality weighting.
 
 ## Severity Logic
 
@@ -116,7 +133,8 @@ Source IP count multiplier amplifies risk when multiple internal hosts reach the
 
 ## Dependencies
 
-None required. Optional: SaaS/CDN IP allow-list lookup for false positive reduction.
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query. The rule functions identically but without criticality weighting (multiplier defaults to 1.0).
+- **Optional**: SaaS/CDN IP allow-list lookup for false positive reduction.
 
 ## Validation
 
