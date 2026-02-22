@@ -126,10 +126,17 @@ Each alert's timestamp hour is extracted and compared against per-user business 
 
 ## Notes
 
+- **Known Limitation — Timezone Handling:**
+  - ES|QL does not support timezone conversion functions. `DATE_EXTRACT("hour", @timestamp)` extracts the hour in UTC only.
+  - For **single-timezone organizations** (e.g., a company operating entirely in EST), set `work_start_hour` and `work_end_hour` in UTC-equivalent values in `lookup-business-hours` (e.g., EST 9 AM–5 PM = UTC 14:00–22:00 → `work_start_hour: 14`, `work_end_hour: 22`).
+  - For **multi-timezone organizations**, populate `lookup-business-hours` with per-user UTC-adjusted values based on their primary office location. This is a static approximation — it does not account for travel.
+  - For **large enterprises with thousands of users across many timezones**, dynamic timezone resolution requires significant data engineering (HR system integration, travel tracking). Consider using Elastic ML's "Unusual Time of Day" anomaly job as a complement for these environments, and use this rule for the subset of users with known schedules.
+  - This rule is most effective when the organization can maintain reasonably accurate business-hour data for its monitored users. Imperfect timezone data is still valuable — a user alerting at 3 AM UTC when their configured hours are 8 AM–6 PM UTC is suspicious regardless of minor timezone drift.
+
 - **Blind Spots:**
-  - **Timezone inaccuracies**: If `lookup-business-hours` does not accurately reflect a user's timezone or schedule, off-hours classification is wrong. Users who travel frequently may have shifting timezones.
-  - **Users not in lookup**: Users missing from `lookup-business-hours` default to 08:00-18:00 UTC, which may not match their actual schedule.
-  - **Weekend vs. weekday**: This rule does not distinguish weekends from weekdays. A Saturday alert at 10 AM appears as "business hours" even though few employees work weekends.
+  - **Users not in lookup**: Users missing from `lookup-business-hours` default to 08:00–18:00 UTC, which may not match their actual schedule. Populate the lookup for at least high-risk and privileged users.
+  - **Weekend vs. weekday**: This rule does not distinguish weekends from weekdays. A Saturday alert at 10 AM appears as "business hours" even though few employees work weekends. To add weekend detection, extend the EVAL block with `day_of_week = DATE_EXTRACT("day_of_week", @timestamp)` and treat Saturday (6) and Sunday (7) as off-hours regardless of hour.
+  - **Traveling users**: Users who travel across timezones will have mismatched business hours. The static lookup cannot track real-time location.
 
 - **False Positives:**
   - **Shift workers**: Employees on night shifts or rotating schedules legitimately work during off-hours. Mitigation: configure accurate schedules in `lookup-business-hours` per user or department.

@@ -85,6 +85,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.ip_values = VALUES(related.ip),
     Esql.source_ip_count = COUNT_DISTINCT(source.ip)
   BY user.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich user risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME user.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS user.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.domain_count >= 2 AND Esql.unique_rules >= 2
     AND (
         Esql.total_risk_score >= 100
@@ -116,7 +131,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Aggregates all open alerts by `user.name` within a 4-hour lookback. Each alert is categorized into a detection domain via `event.dataset`. Severity weights and BBR factors produce a weighted risk score per user. The rule fires when a user has alerts in 2+ distinct domains with sufficient risk signal. A tiered threshold system ensures high-severity correlations surface first.
+Aggregates all open alerts by `user.name` within a 4-hour lookback. Each alert is categorized into a detection domain via `event.dataset`. Severity weights and BBR factors produce a weighted risk score per user. An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier (1.5x for critical assets, 1.2x for high) to amplify risk scores for high-value users. The rule fires when a user has alerts in 2+ distinct domains with sufficient risk signal. A tiered threshold system ensures high-severity correlations surface first. If the LOOKUP JOIN is unavailable, remove that block — the rule functions identically but without criticality weighting.
 
 ## Severity Logic
 
@@ -152,7 +167,7 @@ Aggregates all open alerts by `user.name` within a 4-hour lookback. Each alert i
 
 ## Dependencies
 
-None required. Optional: `lookup-critical-assets` for asset enrichment.
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query. The rule functions identically but without criticality weighting (multiplier defaults to 1.0).
 
 ## Validation
 

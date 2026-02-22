@@ -23,11 +23,28 @@ FROM .internal.alerts-security.alerts-default
     AND kibana.alert.workflow_status == "open"
     AND user.name IS NOT NULL
     AND (
-        user.name LIKE "svc-*" OR user.name LIKE "svc_*"
-        OR user.name LIKE "app-*" OR user.name LIKE "sa-*"
-        OR user.name LIKE "*$" OR user.name LIKE "MSOL_*"
-        OR user.name LIKE "HealthMail*" OR user.name LIKE "SM_*"
-        OR user.name IN ("SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE")
+        // Windows built-in service identities
+        user.name IN ("SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE")
+        // Windows machine accounts (trailing $)
+        OR user.name LIKE "*$"
+        // Common service account naming conventions
+        OR user.name LIKE "svc-*" OR user.name LIKE "svc_*" OR user.name LIKE "svc.*"
+        OR user.name LIKE "*-svc" OR user.name LIKE "*_svc"
+        OR user.name LIKE "service-*" OR user.name LIKE "service_*"
+        OR user.name LIKE "sa-*" OR user.name LIKE "sa_*"
+        OR user.name LIKE "app-*" OR user.name LIKE "app_*"
+        OR user.name LIKE "api-*" OR user.name LIKE "api_*"
+        OR user.name LIKE "bot-*" OR user.name LIKE "bot_*"
+        OR user.name LIKE "task-*" OR user.name LIKE "task_*"
+        OR user.name LIKE "cron-*" OR user.name LIKE "cron_*"
+        // Microsoft infrastructure accounts
+        OR user.name LIKE "MSOL_*" OR user.name LIKE "HealthMail*"
+        OR user.name LIKE "SM_*" OR user.name LIKE "AAD_*"
+        OR user.name LIKE "Sync_*" OR user.name LIKE "ADSync*"
+        // Shared/functional mailboxes and noreply
+        OR user.name LIKE "noreply*" OR user.name LIKE "no-reply*"
+        OR user.name LIKE "mailbox-*" OR user.name LIKE "shared-*"
+        // LOOKUP JOIN enrichment below catches registered accounts not matching patterns
     )
 | EVAL
     domain_category = CASE(
@@ -68,6 +85,15 @@ FROM .internal.alerts-security.alerts-default
     Esql.host_values = VALUES(host.name),
     Esql.source_ip_count = COUNT_DISTINCT(source.ip)
   BY user.name
+// --- Optional: LOOKUP JOIN for expected-domain comparison ---
+// If lookup-service-accounts is available, enrich with expected behavior.
+// If not available, remove this block — the rule still functions on pattern matching alone.
+| LOOKUP JOIN lookup-service-accounts ON user.name
+| EVAL
+    Esql.is_registered = CASE(svc.owner_team IS NOT NULL, true, false),
+    Esql.expected_domains = COALESCE(svc.expected_domains, "unknown"),
+    Esql.svc_risk_tier = COALESCE(svc.risk_tier, "unregistered")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.domain_count >= 3
 | EVAL
     Esql.correlation_severity = CASE(
@@ -78,10 +104,12 @@ FROM .internal.alerts-security.alerts-default
     ),
     Esql.description = CONCAT(
         "Service account ", user.name,
+        " [", Esql.svc_risk_tier, "]",
         " | Risk: ", TO_STRING(Esql.total_risk_score),
         " | ", TO_STRING(Esql.domain_count), " domains (threshold: 3)",
         " | ", TO_STRING(Esql.unique_rules), " rules",
-        " | ", TO_STRING(Esql.host_count), " hosts"
+        " | ", TO_STRING(Esql.host_count), " hosts",
+        " | Expected domains: ", Esql.expected_domains
     )
 | SORT Esql.total_risk_score DESC
 | LIMIT 50
@@ -89,7 +117,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Inverts CORR-1A's exclusion — ONLY matches service account patterns. domain_count threshold raised to 3 (vs 2 for CORR-1A). Risk thresholds elevated 50% (150/75/40 vs 100/50/25).
+Inverts CORR-1A's exclusion — ONLY matches service account patterns using a comprehensive naming convention list covering Windows built-ins, machine accounts ($), common prefixes (svc-, app-, api-, bot-, task-, cron-), Microsoft infrastructure accounts (MSOL_, AAD_, Sync_), and functional mailboxes. An optional LOOKUP JOIN against `lookup-service-accounts` enriches with owner team, expected domains, and risk tier. domain_count threshold raised to 3 (vs 2 for CORR-1A). Risk thresholds elevated 50% (150/75/40 vs 100/50/25). If the LOOKUP JOIN is unavailable, remove that block — the rule still functions on pattern matching alone.
 
 ## Severity Logic
 
@@ -103,15 +131,19 @@ Inverts CORR-1A's exclusion — ONLY matches service account patterns. domain_co
 ## Notes
 
 - **Blind Spots:**
-  - Attackers who compromise but rename accounts to not match patterns (caught by CORR-1A instead)
-  - Custom naming schemes not in WHERE clause (add yours)
+  - Attackers who compromise accounts not matching naming patterns (caught by CORR-1A instead)
+  - Custom naming schemes not in WHERE clause — add your organization's conventions (e.g., `run-*`, `batch_*`, `infra-*`)
+  - Cloud provider-managed identities (AWS Lambda execution roles, GCP service accounts with email format, Azure Managed Identities) may not match these patterns — register them in `lookup-service-accounts`
 - **False Positives:**
-  - Orchestration tools (Ansible, Terraform, SCCM). Mitigation: register in lookup-service-accounts.
-  - Backup agents (Veeam, Commvault). Mitigation: register with expected domains.
+  - Orchestration tools (Ansible, Terraform, SCCM) operating across multiple domains by design. Mitigation: register in `lookup-service-accounts` with expected domains.
+  - Backup agents (Veeam, Commvault) touching endpoint + cloud + network. Mitigation: register with expected domains.
+  - CI/CD pipelines (Jenkins, GitHub Actions runners) authenticating across identity + cloud + endpoint. Mitigation: register with expected domains.
 - **Tuning:**
-  - Add organization-specific service account naming patterns to the WHERE clause
-  - Register known service accounts with their expected domain activity in lookup-service-accounts
-  - Adjust domain_count threshold (default: 3) based on service account behavior in your environment
+  1. Add organization-specific service account naming patterns to the WHERE clause
+  2. Register known service accounts in `lookup-service-accounts` with expected domain activity
+  3. Adjust `domain_count` threshold (default: 3) based on service account behavior
+  4. Use the `Esql.svc_risk_tier` enrichment to apply different thresholds for tier1_critical vs tier3_low service accounts
+  5. If `lookup-service-accounts` is unavailable, remove the LOOKUP JOIN block — the rule still functions on naming pattern matching
 
 ## Data Requirements
 
@@ -121,7 +153,7 @@ Inverts CORR-1A's exclusion — ONLY matches service account patterns. domain_co
 
 ## Dependencies
 
-None required. Optional: `lookup-service-accounts` for expected-domain baseline comparison.
+- **Optional**: `lookup-service-accounts` — enriches with owner team, expected domains, and risk tier. If unavailable, remove the LOOKUP JOIN block from the query. The rule still functions on naming pattern matching alone.
 
 ## Validation
 

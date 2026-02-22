@@ -17,7 +17,7 @@ The 55-rule correlation rule catalog was audited against the Correlation Rule Fr
 | Tier 1: Entity-Centric | B+ | 8 | 3 | 8 | 19 | 12 |
 | Tier 2: Kill Chain & Behavioral | B- | 10 | 10 | 6 | 12 | 16 |
 | Tier 3: Risk Accumulation | B- | 5 | 3 | 6 | 8 | 6 |
-| Tier 4: Meta-Correlation | C+ | 7 | 4 | 9 | 12 | 6 |
+| Tier 4: Meta-Correlation | B | 7 | 2 | 7 | 12 | 6 |
 | Tier 5: Domain-Specific | B- | 15 | 3 | 10 | 29 | 25 |
 | Tier 6: Novelty & Anomaly | C | 10 | 8 | 10 | 13 | 7 |
 | **Total** | | **55** | **31** | **49** | **93** | **72** |
@@ -89,13 +89,11 @@ Some rules use abbreviated domain patterns (missing proxy, dns, email categories
 
 **Status**: Documented for future cleanup.
 
-### 7. Tier 4 Identity Crisis (HIGH - P2)
+### 7. ~~Tier 4 Identity Crisis~~ — RESOLVED (Not an Issue)
 
-**Affected**: 5 of 7 Tier 4 rules
+All Tier 4 rules correctly query raw alert logs (`.internal.alerts-security.alerts-default`). This is the intended design: the framework assumes all alerts — vendor prebuilt rules, Sigma/LOLRMM imports, building block rules, and indicator alerts — are present in the alerts index. Tier 4 rules perform "meta-correlation" by analyzing patterns across the full alert population (campaigns via shared IOCs, coordinated TTP usage, alert surges, silent rule reactivation). CORR-4D and 4E specifically analyze detection system behavior. CORR-4A, 4B, 4C, 4F, and 4G analyze cross-entity alert patterns. Both are valid meta-correlation approaches.
 
-Five Tier 4 rules (4A, 4B, 4C, 4F, 4G) query raw alerts instead of Tier 1-3 correlation output. They don't perform "meta-correlation" as designed. Only CORR-4D and CORR-4E genuinely analyze detection system behavior (meta-detection).
-
-**Status**: Documented. Architectural decision deferred to user review.
+**Status**: Confirmed correct by design. No changes needed.
 
 ### 8. Missing LOOKUP JOINs in Tiers 1-2 (LOW - P3)
 
@@ -136,7 +134,7 @@ Strategy sections reference "INLINE STATS" when queries use regular STATS. Strat
 | P2 | Fix documentation accuracy | ~8 | Low | FIXED |
 | P2 | Standardize domain categorization | ~10 | Medium | Deferred |
 | P3 | Add LOOKUP JOINs to Tiers 1-2 | 18 | High | Deferred |
-| P3 | Resolve Tier 4 identity | 5 | High | Deferred |
+| ~~P3~~ | ~~Resolve Tier 4 identity~~ | ~~5~~ | - | Resolved — correct by design |
 | P3 | Create lookup index population guidance | 1 | Medium | Deferred |
 
 ---
@@ -161,11 +159,11 @@ Strategy sections reference "INLINE STATS" when queries use regular STATS. Strat
 
 **Key Issues**: LOOKUP JOIN key mismatches in 3 of 5 rules (FIXED). CORR-3D z-score uses weekly average vs 24h measurement (documented). COALESCE entity resolution inconsistent across rules.
 
-### Tier 4: Meta-Correlation (Grade: C+)
+### Tier 4: Meta-Correlation (Grade: B)
 
-**Strengths**: CORR-4D and 4E are genuine meta-detection rules. TTP diversity concept is sound.
+**Strengths**: All 7 rules correctly operate on the full alert population. CORR-4D and 4E analyze detection system behavior (rule surges, silent reactivation). CORR-4A/4B/4C/4F/4G analyze cross-entity alert patterns (campaigns, coordination, TTP diversity). TTP diversity concept is sound.
 
-**Key Issues**: 5 of 7 rules don't actually perform meta-correlation (documented). COALESCE IOC flattening breaks campaign clustering. LOOKUP JOIN syntax issues (FIXED).
+**Key Issues**: COALESCE entity conflation in grouping (see entity resolution recommendation). LOOKUP JOIN syntax issues (FIXED).
 
 ### Tier 5: Domain-Specific (Grade: B-)
 
@@ -183,12 +181,12 @@ Strategy sections reference "INLINE STATS" when queries use regular STATS. Strat
 
 ## Deferred Issues (Require Architectural Decisions)
 
-1. **Tier 4 identity**: Should 5 rules be reclassified or redesigned to query correlation output?
-2. **CORR-6I feasibility**: Post-aggregation LOOKUP JOIN is not valid ES|QL. Rule needs redesign.
-3. **CORR-6C timezone**: ES|QL lacks timezone conversion. Rule only works for UTC-aligned orgs.
-4. **Lookup index population**: No implementation guidance for the 11 prerequisite lookup indices.
-5. **Cross-rule deduplication**: Same entity can fire rules across multiple tiers simultaneously.
-6. **COALESCE entity conflation**: User/host merged into single entity_name in Tiers 3-4.
+1. ~~**Tier 4 identity**~~: Resolved — all Tier 4 rules correctly correlate raw alert data. This is the intended design.
+2. **CORR-6I feasibility**: Post-aggregation LOOKUP JOIN is not valid ES|QL. Recommended redesign: Transform (computes per-entity tactic combinations) + `new_terms` rule (detects novel combinations). See CORR-6I documentation.
+3. **CORR-6C timezone**: ES|QL lacks timezone conversion. Documented as known limitation with guidance for single-timezone, multi-timezone, and large enterprise deployments. See CORR-6C rule file.
+4. **Lookup index population**: Added best practices and population guidance to catalog. No step-by-step build instructions (intentional — implementations vary by environment).
+5. **Cross-rule deduplication**: Planned enhancement documented in catalog. Requires a dedicated section covering expected overlap, AI deduplication, and priority ordering.
+6. **COALESCE entity conflation**: Comprehensive analysis and typed-entity recommendation documented in catalog under "Entity Resolution and the COALESCE Problem". Implementation of Pattern B (typed entity key) across 16 affected rules is tracked as a separate task.
 
 ---
 

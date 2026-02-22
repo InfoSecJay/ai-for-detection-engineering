@@ -146,6 +146,22 @@ Esql.alert_count         — count of correlated alerts
 Esql.correlation_severity — dynamically computed severity
 ```
 
+### Alert Field Paths
+
+These rules query Elastic Security alerts from `.internal.alerts-security.alerts-default`. The key alert fields used throughout the catalog:
+
+| Field | Purpose | Notes |
+|-------|---------|-------|
+| `signal.rule.severity` | Alert severity assigned by the detection rule | Legacy field path (pre-8.x). Still populated in 8.x+ for backward compatibility. The modern equivalent is `kibana.alert.severity`. Both work. |
+| `kibana.alert.rule.threat.tactic.name` | MITRE ATT&CK tactic name | Canonical path in the alert document schema. |
+| `kibana.alert.rule.threat.technique.name` | MITRE ATT&CK technique name | Canonical path in the alert document schema. |
+| `kibana.alert.rule.building_block_type` | Building block indicator | Value `"default"` identifies building block alerts. |
+| `kibana.alert.rule.name` | Detection rule name | Used for rule diversity counting and meta-correlation. |
+| `kibana.alert.workflow_status` | Alert triage status | `"open"`, `"acknowledged"`, `"closed"`. Rules filter on `"open"`. |
+| `event.dataset` | Data source identifier | Used for domain categorization. ECS standard field. |
+
+> **Environment adaptation**: If your environment uses different field paths (e.g., custom alert index mappings, `kibana.alert.severity` instead of `signal.rule.severity`), update the field references in the query templates. The detection logic is field-path-agnostic — only the references need to change. Run `FROM .internal.alerts-security.alerts-default | KEEP signal.rule.severity, kibana.alert.severity | LIMIT 5` to verify which fields are populated in your environment.
+
 ### Severity Risk Weights
 
 ```esql
@@ -175,18 +191,25 @@ AND NOT user.name IN ("SYSTEM", "Administrator", "LOCAL SERVICE", "NETWORK SERVI
     "DWM-1", "DWM-2", "DWM-3", "UMFD-0", "UMFD-1", "UMFD-2",
     "DefaultAccount", "Guest", "WDAGUtilityAccount")
 AND NOT (
-    user.name LIKE "svc-*"
-    OR user.name LIKE "svc_*"
-    OR user.name LIKE "app-*"
-    OR user.name LIKE "sa-*"
-    OR user.name LIKE "*$"
-    OR user.name LIKE "MSOL_*"
-    OR user.name LIKE "HealthMail*"
-    OR user.name LIKE "SM_*"
+    user.name LIKE "*$"
+    OR user.name LIKE "svc-*" OR user.name LIKE "svc_*" OR user.name LIKE "svc.*"
+    OR user.name LIKE "*-svc" OR user.name LIKE "*_svc"
+    OR user.name LIKE "service-*" OR user.name LIKE "service_*"
+    OR user.name LIKE "sa-*" OR user.name LIKE "sa_*"
+    OR user.name LIKE "app-*" OR user.name LIKE "app_*"
+    OR user.name LIKE "api-*" OR user.name LIKE "api_*"
+    OR user.name LIKE "bot-*" OR user.name LIKE "bot_*"
+    OR user.name LIKE "task-*" OR user.name LIKE "task_*"
+    OR user.name LIKE "cron-*" OR user.name LIKE "cron_*"
+    OR user.name LIKE "MSOL_*" OR user.name LIKE "HealthMail*"
+    OR user.name LIKE "SM_*" OR user.name LIKE "AAD_*"
+    OR user.name LIKE "Sync_*" OR user.name LIKE "ADSync*"
+    OR user.name LIKE "noreply*" OR user.name LIKE "no-reply*"
+    OR user.name LIKE "mailbox-*" OR user.name LIKE "shared-*"
 )
 ```
 
-> **Note**: CORR-1H intentionally inverts this pattern to specifically monitor service accounts.
+> **Note**: CORR-1H intentionally inverts this pattern to specifically monitor service accounts. Add your organization's custom naming conventions to both this exclusion and the CORR-1H inclusion pattern.
 
 ### Domain Categorization Pattern
 
@@ -232,21 +255,27 @@ domain_category = CASE(
 
 ## Prerequisite Lookup Indices
 
-Correlation rules use `LOOKUP JOIN` to enrich alert data with contextual information. These indices must be created before deploying rules that reference them.
+Correlation rules use `LOOKUP JOIN` to enrich alert data with contextual information. These indices must be created before deploying rules that reference them. All LOOKUP JOINs in this catalog are **optional unless marked required** — rules that use them include comments showing how to remove the enrichment block if the lookup is unavailable.
+
+**Best practices for lookup indices:**
+- Use `mode: "lookup"` index mode for all lookup indices (Elasticsearch 8.11+). This optimizes them for LOOKUP JOIN performance.
+- Keep lookup indices small (< 100K documents) for best query performance.
+- Populate via scheduled Elasticsearch transforms, scripted jobs, or manual CSV uploads — whatever fits your operational maturity.
+- Use ILM or manual refresh to keep data current. Stale lookups produce stale enrichment.
 
 | # | Index | Purpose | Key Rules |
 |---|-------|---------|-----------|
-| 1 | `lookup-critical-assets` | Crown jewel systems/users — maps hostnames to business criticality | CORR-1A, 1B, 1F, 3A, 3E, 5A |
-| 2 | `lookup-service-accounts` | Known service accounts and expected behavior | CORR-1H, 3A, 5B, 5H |
-| 3 | `lookup-peer-baselines` | Department/role risk baselines for peer comparison | CORR-3D, 6H |
-| 4 | `lookup-entity-history` | Historical entity-rule associations for novelty detection | CORR-6A, 6B, 6E, 6F, 6I |
-| 5 | `lookup-geo-baselines` | Expected countries per user | CORR-5J, 6B |
-| 6 | `lookup-business-hours` | Per-timezone work schedules | CORR-5L, 6C |
-| 7 | `lookup-dormant-accounts` | Accounts inactive 90+ days | CORR-6D |
-| 8 | `lookup-process-baselines` | Expected processes per host group | CORR-6E |
-| 9 | `lookup-rule-baselines` | Rule firing rate baselines | CORR-4D, 4E, 6A, 6G, 6J |
-| 10 | `lookup-network-baselines` | Port/protocol baselines per host | CORR-6F |
-| 11 | `lookup-risk-scores` | Rolling entity risk accumulations | CORR-3C, 4C, 4D, 6J |
+| 1 | `lookup-critical-assets` | Crown jewel systems/users — maps entity names to business criticality tiers. Populate from your CMDB, asset inventory, or manually for top 50 critical assets. | CORR-1A, 1B, 1F, 1H, 3A, 3E, 5A |
+| 2 | `lookup-service-accounts` | Known service accounts with owner team, expected domains, and risk tier. Populate from Active Directory OU, Okta service account groups, or manual inventory. | CORR-1H, 3A, 5B, 5H |
+| 3 | `lookup-peer-baselines` | Department/role risk baselines for peer comparison. Populate via a weekly transform that computes average and standard deviation of risk scores per department. | CORR-3D, 6H |
+| 4 | `lookup-entity-history` | Historical entity-rule associations for novelty detection. Populate via a daily transform that records first-seen dates for entity+rule pairs. | CORR-6A, 6B, 6E, 6F |
+| 5 | `lookup-geo-baselines` | Expected countries per user. Populate from HR records (primary office location) or from a transform analyzing 90 days of authentication geo data. | CORR-5J, 6B |
+| 6 | `lookup-business-hours` | Per-user or per-department work schedules in UTC. Populate from HR records or set organization-wide defaults. See CORR-6C for timezone handling notes. | CORR-5L, 6C |
+| 7 | `lookup-dormant-accounts` | Accounts inactive 90+ days. Populate via a scheduled query against authentication logs or Active Directory lastLogonTimestamp. | CORR-6D |
+| 8 | `lookup-process-baselines` | Expected processes per host or host group. Populate via a transform analyzing 30+ days of endpoint process telemetry. | CORR-6E |
+| 9 | `lookup-rule-baselines` | Rule firing rate baselines (average daily count, standard deviation, last fire date). Populate via a weekly transform analyzing detection rule output. | CORR-4D, 4E, 6A, 6G, 6J |
+| 10 | `lookup-network-baselines` | Standard/expected ports and protocols. Populate manually (IANA well-known ports) or from network flow analysis. | CORR-6F |
+| 11 | `lookup-risk-scores` | Rolling entity risk accumulations (7d, 24h). Populate via a transform that runs CORR-3A/3B logic and writes results to a lookup index. | CORR-3C, 4C, 4D, 6J |
 
 <details>
 <summary>Lookup Index Schemas (click to expand)</summary>
@@ -450,6 +479,100 @@ Layer 0: Foundation
 
 ---
 
+## Entity Resolution and the COALESCE Problem
+
+### The Problem
+
+16 rules across Tiers 3, 4, and 6 use `COALESCE(user.name, host.name)` to create a single `entity_name` for grouping. This creates three concrete issues:
+
+1. **Namespace collision**: A user named `WEBSERVER01` and a host named `WEBSERVER01` become the same entity. Their risk scores merge incorrectly.
+2. **Silent entity dropping**: When both `user.name` and `host.name` are populated (the majority case for EDR alerts), COALESCE silently discards the second entity. An alert about user `jsmith` on host `WORKSTATION-42` is attributed only to `jsmith` — the host dimension is invisible.
+3. **Inconsistent preference**: CORR-3E uses `COALESCE(host.name, user.name)` (host-preferred) while all other rules use `COALESCE(user.name, host.name)` (user-preferred). The same alert is attributed to different entities depending on which rule processes it.
+
+This mirrors a well-documented challenge in the industry. Splunk's Risk-Based Alerting solves it with typed `risk_object` + `risk_object_type`. Elastic's own Entity Analytics engine scores users and hosts in separate indices, never merging them.
+
+### Recommended Pattern: Typed Entity Key
+
+Replace untyped `COALESCE(user.name, host.name)` with a typed composite key:
+
+```esql
+// BEFORE (current — problematic)
+entity_name = COALESCE(user.name, host.name),
+
+// AFTER (recommended — typed)
+entity_type = CASE(
+    user.name IS NOT NULL, "user",
+    host.name IS NOT NULL, "host",
+    "unknown"
+),
+entity_value = CASE(
+    user.name IS NOT NULL, user.name,
+    host.name IS NOT NULL, host.name,
+    "unknown"
+),
+```
+
+Then group by `BY entity_type, entity_value` instead of `BY entity_name`.
+
+### Entity Resolution Layers
+
+For cross-source correlation, entity resolution becomes increasingly sophisticated. These layers build on each other:
+
+```
+Layer 3: Identity Resolution (highest precision, highest cost)
+    lookup-identity-resolution maps raw usernames to canonical identity
+    Solves: "CORP\jdoe" == "john.doe@corp.com" == "john.doe" in Okta
+    Required for: cross-IdP user correlation
+
+Layer 2: IP-to-Host Resolution
+    lookup-host-ip-mapping bridges network alerts (IP-only) to endpoint alerts (hostname)
+    Required for: CORR-5M, 5N, 5D (NDR + endpoint, firewall + endpoint)
+
+Layer 1: Typed Entity Key (minimum viable fix)
+    entity_type + entity_value composite key
+    GROUP BY entity_type, entity_value
+    Required for: ALL rules currently using COALESCE
+```
+
+### Affected Rules
+
+| Tier | Rules | Current Pattern | Recommendation |
+|------|-------|----------------|----------------|
+| Tier 1 | CORR-1A–1H | Already typed (single entity field per rule) | No change needed |
+| Tier 2 | CORR-2A–2J | Already typed (single entity field per rule) | No change needed |
+| Tier 3 | CORR-3A, 3B, 3C, 3E | `COALESCE(user.name, host.name)` | Use typed entity key, or split into separate user-risk and host-risk rules |
+| Tier 4 | CORR-4A–4G | `COALESCE(user.name, host.name)` | Use typed entity key |
+| Tier 6 | CORR-6A, 6G, 6H, 6I, 6J | `COALESCE(user.name, host.name)` | Use typed entity key |
+
+### ECS Entity Fields Reference
+
+When correlating across heterogeneous log sources, these are the key ECS fields per source type:
+
+| Log Source | `user.name` | `host.name` | `source.ip` | `related.user` contents |
+|-----------|------------|------------|------------|-------------------------|
+| **EDR** | Process owner | Agent hostname | Host IP | [process.user.name] |
+| **Windows Security** | SubjectUserName | Workstation | Source IP | [SubjectUserName, TargetUserName] |
+| **Okta / Entra ID** | Actor | N/A (cloud) | Client IP | [actor, target_user] |
+| **AWS CloudTrail** | IAM principal | N/A (cloud) | Source IP | [IAM user/role] |
+| **Firewall** | N/A or srcuser | Observer hostname | Source IP | Often empty |
+| **NDR (Zeek/Suricata)** | N/A | N/A | Source IP | Empty |
+| **Proxy** | Authenticated user (if any) | N/A | Client IP | [user] if authenticated |
+
+> **Key insight**: Network logs have no `user.name` and no `host.name`. They only have IPs. Correlating network + endpoint alerts requires IP-to-hostname resolution (Layer 2) via a lookup index. The `related.user` multi-valued field contains ALL usernames from an event but does not distinguish actor from target.
+
+### Future Enhancement: Lookup Indices for Identity Resolution
+
+Two additional lookup indices support advanced entity resolution:
+
+| Index | Key Field | Purpose |
+|-------|-----------|---------|
+| `lookup-identity-resolution` | `user.name` → `canonical_identity` | Maps raw usernames (AD sAMAccountName, UPN, Okta login, AWS IAM) to a single canonical identity. Populated from Active Directory, Okta, and HR system exports. |
+| `lookup-host-ip-mapping` | `source.ip` → `resolved_hostname` | Maps IP addresses to hostnames. Populated from DHCP logs, EDR agent data, or DNS resolution logs. Enables network alert → endpoint host correlation. |
+
+These are documented as future enhancements. The typed entity key pattern (Layer 1) should be implemented first as it requires no additional infrastructure.
+
+---
+
 ## Appendix: Elastic Higher-Order Rule Comparison
 
 ### Gap Analysis
@@ -477,3 +600,51 @@ Layer 0: Foundation
 | **Replace** | "Multiple Alerts Involving a User/Host" | CORR-1A/1B are strictly superior (domain diversity, risk scoring, tactic awareness). |
 | **Replace** | Threshold-based spike rules | CORR-4D + 6J use baseline-relative detection instead of static thresholds. |
 | **Add** | - | Tiers 3-4 (RBA + meta-correlation) have no Elastic equivalent. |
+
+---
+
+## Planned Enhancements
+
+### 1. Domain Categorization Standardization
+
+The domain categorization CASE pattern (mapping `event.dataset` to security domains like `endpoint`, `identity`, `cloud`, etc.) varies in completeness across rules. A dedicated data requirements page will standardize the canonical domain list and the `event.dataset` patterns that map to each:
+
+- `endpoint` — EDR, Windows events, Sysmon
+- `identity` — IdP (Okta, Entra ID, OneLogin, Ping, Auth0)
+- `cloud` — AWS, GCP, Azure, O365
+- `network_fw` — Palo Alto, Fortinet, Checkpoint, generic firewalls
+- `network_ndr` — ExtraHop, Zeek, Suricata
+- `proxy` — Zscaler, Bluecoat, Squid
+- `dns` — DNS query/response logs
+- `email` — Proofpoint, Mimecast, email security
+- `vpn` — VPN authentication and tunnel logs
+- `waf` — Web application firewall logs
+- `dlp` — Data loss prevention events
+
+This will be a separate reference document linked from this catalog.
+
+### 2. Detection Rule Foundation Requirements
+
+This correlation framework assumes a mature detection rule foundation. For maximum effectiveness, the environment should have:
+
+- **Vendor prebuilt rules**: All applicable Elastic prebuilt detection rules enabled (400+ rules covering MITRE ATT&CK techniques)
+- **Community rules**: SigmaHQ rules converted to Elastic format (5,000+ rules across Windows, Linux, cloud, network)
+- **LOLRMM**: Living Off the Land Remote Monitoring and Management tool detection rules
+- **Building block rules**: Low-fidelity indicator rules that generate alerts for common activities — these accumulate into meaningful signals via Tier 3 risk scoring
+- **Indicator/building block rules for vendor alerts**: Each vendor alert (IPS signature, AV detection, etc.) should generate a corresponding building block alert with appropriate severity, ensuring all security events are available for correlation
+
+The end goal is that EVERY security-relevant event in the environment generates an alert (building block or standard) in `.internal.alerts-security.alerts-default`, providing the correlation rules with complete visibility.
+
+> **Reference**: For a comprehensive catalog of 12,000+ detection rules from multiple vendors and community sources, see [Threat Detection Explorer](https://threat-detection-explorer.vercel.app/).
+
+### 3. Cross-Rule Deduplication Guidance
+
+When multiple correlation rules fire for the same entity in the same time window, downstream consumers (analysts, AI triage tools) need deduplication guidance. This will be documented as a separate section covering:
+
+- Expected overlap between tiers (a user triggering CORR-1A + CORR-2B + CORR-3A simultaneously is correct behavior, not a bug)
+- How AI tools (UC-11, UC-12) should deduplicate and merge correlated clusters
+- Priority ordering when the same entity has alerts from multiple tiers
+
+### 4. Entity Resolution Implementation
+
+The typed entity key pattern documented in "Entity Resolution and the COALESCE Problem" should be applied to the 16 affected rules across Tiers 3, 4, and 6. This is tracked separately as an implementation task.

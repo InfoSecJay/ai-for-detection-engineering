@@ -70,6 +70,21 @@ FROM .internal.alerts-security.alerts-default
     Esql.user_values = VALUES(user.name),
     Esql.ip_values = VALUES(related.ip)
   BY host.name
+// --- Optional: LOOKUP JOIN for asset criticality enrichment ---
+// If lookup-critical-assets is available, enrich host risk with criticality weighting.
+// If not available, remove this block — the rule still functions without enrichment.
+| RENAME host.name AS entity_name
+| LOOKUP JOIN lookup-critical-assets ON entity_name
+| RENAME entity_name AS host.name
+| EVAL
+    criticality_multiplier = CASE(
+        asset.criticality == "critical", 1.5,
+        asset.criticality == "high", 1.2,
+        1.0
+    ),
+    Esql.total_risk_score = ROUND(Esql.total_risk_score * criticality_multiplier),
+    Esql.asset_criticality = COALESCE(asset.criticality, "standard")
+// --- End optional LOOKUP JOIN block ---
 | WHERE Esql.domain_count >= 2 AND Esql.unique_rules >= 2
     AND (
         Esql.total_risk_score >= 80
@@ -98,7 +113,7 @@ FROM .internal.alerts-security.alerts-default
 
 ## Strategy
 
-Aggregates by `host.name`. No service account exclusion — host attribution doesn't depend on user context. Captures user spread (multiple users on same host = potential compromise or shared system).
+Aggregates by `host.name`. No service account exclusion — host attribution doesn't depend on user context. Captures user spread (multiple users on same host = potential compromise or shared system). An optional LOOKUP JOIN against `lookup-critical-assets` applies a criticality multiplier (1.5x for critical assets like domain controllers, 1.2x for high) to amplify risk scores for production and PCI-scope hosts. If the LOOKUP JOIN is unavailable, remove that block — the rule functions identically but without criticality weighting.
 
 ## Severity Logic
 
@@ -130,7 +145,7 @@ Aggregates by `host.name`. No service account exclusion — host attribution doe
 
 ## Dependencies
 
-Optional: `lookup-critical-assets` for severity escalation on production/PCI hosts.
+- **Optional**: `lookup-critical-assets` — applies criticality multiplier to risk scores. If unavailable, remove the LOOKUP JOIN block from the query. The rule functions identically but without criticality weighting (multiplier defaults to 1.0).
 
 ## Validation
 
