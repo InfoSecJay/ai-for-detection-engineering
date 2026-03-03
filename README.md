@@ -45,48 +45,48 @@ AI use cases in detection engineering depend on mature foundational capabilities
 
 | # | Use Case | What AI Actually Does | Primary Data Input | Complexity |
 |---|----------|----------------------|-------------------|------------|
-| 01 | [Detection Performance Analytics](use-cases/01-detection-performance-analytics.md) | Synthesizes metrics into prioritized narratives; identifies cross-rule patterns | SIEM alert logs | Medium |
-| 02 | [Entity Cardinality Noise Analysis](use-cases/02-entity-cardinality-noise-analysis.md) | Interprets entity patterns in detection context; clusters by semantic similarity | SIEM alert logs | Medium |
-| 03 | [Automated Rule Tuning Recommendations](use-cases/03-automated-rule-tuning-recommendations.md) | Generates contextual tuning proposals with safety assessment | SIEM alert logs, rule files | Medium |
-| 04 | [Detection Drift Monitoring](use-cases/04-detection-drift-monitoring.md) | Diagnoses likely cause of rule silence or behavioral changes | SIEM alert logs, rule files | Medium |
-| 05 | [Temporal Pattern Detection](use-cases/05-temporal-pattern-detection.md) | Identifies complex temporal patterns and explains their business context | SIEM alert logs | Low-Medium |
+| 01 | [Detection Performance Analytics](use-cases/alert-analysis/01-detection-performance-analytics.md) | Synthesizes metrics into prioritized narratives; identifies cross-rule patterns | SIEM alert logs | Medium |
+| 02 | [Entity Cardinality Noise Analysis](use-cases/alert-analysis/02-entity-cardinality-noise-analysis.md) | Interprets entity patterns in detection context; clusters by semantic similarity | SIEM alert logs | Medium |
+| 03 | [Automated Rule Tuning Recommendations](use-cases/alert-analysis/03-automated-rule-tuning-recommendations.md) | Generates contextual tuning proposals with safety assessment | SIEM alert logs, rule files | Medium |
+| 04 | [Detection Drift Monitoring](use-cases/alert-analysis/04-detection-drift-monitoring.md) | Diagnoses likely cause of rule silence or behavioral changes | SIEM alert logs, rule files | Medium |
+| 05 | [Temporal Pattern Detection](use-cases/alert-analysis/05-temporal-pattern-detection.md) | Identifies complex temporal patterns and explains their business context | SIEM alert logs | Low-Medium |
 
 ### Posture Assessment
 
 | # | Use Case | What AI Actually Does | Primary Data Input | Complexity |
 |---|----------|----------------------|-------------------|------------|
-| 06 | [MITRE ATT&CK Posture Scoring](use-cases/06-mitre-attack-posture-scoring.md) | Generates health narratives; assesses observable diversity; executive summaries | Alert logs, rule files | High |
-| 07 | [Threat-Informed Gap Prioritization](use-cases/07-threat-informed-gap-prioritization.md) | Synthesizes CTI reports into structured technique lists; risk-ranks gaps | Rule files, CTI reports | Medium-High |
-| 08 | [Kill Chain Completeness Analysis](use-cases/08-kill-chain-completeness-analysis.md) | Assesses operational meaningfulness of detection at each attack stage | Alert logs, rule files | Medium |
-| 09 | [Cross-Domain Detection Coverage](use-cases/09-cross-domain-detection-coverage.md) | Evaluates quality and complementarity of cross-domain coverage | Alert logs, rule files | Medium |
-| 10 | [Executive Posture Reporting](use-cases/10-executive-posture-reporting.md) | Transforms technical metrics into leadership-consumable narratives | Posture scores | Medium |
+| 06 | [MITRE ATT&CK Posture Scoring](use-cases/posture-assessment/06-mitre-attack-posture-scoring.md) | Generates health narratives; assesses observable diversity; executive summaries | Alert logs, rule files | High |
+| 07 | [Threat-Informed Gap Prioritization](use-cases/posture-assessment/07-threat-informed-gap-prioritization.md) | Synthesizes CTI reports into structured technique lists; risk-ranks gaps | Rule files, CTI reports | Medium-High |
+| 08 | [Kill Chain Completeness Analysis](use-cases/posture-assessment/08-kill-chain-completeness-analysis.md) | Assesses operational meaningfulness of detection at each attack stage | Alert logs, rule files | Medium |
+| 09 | [Cross-Domain Detection Coverage](use-cases/posture-assessment/09-cross-domain-detection-coverage.md) | Evaluates quality and complementarity of cross-domain coverage | Alert logs, rule files | Medium |
+| 10 | [Executive Posture Reporting](use-cases/posture-assessment/10-executive-posture-reporting.md) | Transforms technical metrics into leadership-consumable narratives | Posture scores | Medium |
 
 ### AI-Assisted Triage
 
 | # | Use Case | What AI Actually Does | Primary Data Input | Complexity |
 |---|----------|----------------------|-------------------|------------|
-| 11 | [LLM Triage Verdicts](use-cases/11-llm-triage-verdicts.md) | Weighs ambiguous signals; produces structured verdicts with reasoning | Enriched alerts | High |
-| 12 | [Alert Cluster Narrative Synthesis](use-cases/12-alert-cluster-narrative-synthesis.md) | Generates coherent attack narratives from pre-correlated alert clusters | Correlated alerts | Medium-High |
-| 13 | [Natural Language Alert Query](use-cases/13-natural-language-alert-query.md) | Translates natural language to SIEM queries; summarizes results | Alert indices | Medium |
-| 14 | [Agentic Investigation Execution](use-cases/14-agentic-investigation-execution.md) | Dynamic investigation with reasoning-driven pivot decisions | Multiple APIs | Very High |
+| 11 | [LLM Triage Verdicts](use-cases/ai-assisted-triage/11-llm-triage-verdicts.md) | Weighs ambiguous signals; produces structured verdicts with reasoning | Enriched alerts | High |
+| 12 | [Alert Cluster Narrative Synthesis](use-cases/ai-assisted-triage/12-alert-cluster-narrative-synthesis.md) | Generates coherent attack narratives from pre-correlated alert clusters | Correlated alerts | Medium-High |
+| 13 | [Natural Language Alert Query](use-cases/ai-assisted-triage/13-natural-language-alert-query.md) | Translates natural language to SIEM queries; summarizes results | Alert indices | Medium |
+| 14 | [Agentic Investigation Execution](use-cases/ai-assisted-triage/14-agentic-investigation-execution.md) | Dynamic investigation with reasoning-driven pivot decisions | Multiple APIs | Very High |
 
 ### Rule Content Engineering
 
 | # | Use Case | What AI Actually Does | Primary Data Input | Complexity |
 |---|----------|----------------------|-------------------|------------|
-| 15 | [LLM Investigation Guide Generation](use-cases/15-llm-investigation-guide-generation.md) | Generates structured triage guides by reasoning about detection logic | Rule files | Medium |
-| 16 | [Observable Artifact Extraction](use-cases/16-observable-artifact-extraction.md) | Extracts and classifies observables from complex query logic | Rule files | Low-Medium |
-| 17 | [Rule Comparison & Gap Analysis](use-cases/17-rule-comparison-and-gap-analysis.md) | Semantic comparison of rules across formats and query languages | Rule files, CTI reports | Medium |
-| 18 | [Rule Quality Assessment](use-cases/18-rule-quality-assessment.md) | Assesses semantic quality, MITRE accuracy, and evasion gaps | Rule files | Medium |
-| 19 | [Detection Rule Generation](use-cases/19-detection-rule-generation.md) | Generates candidate detection rules from threat intel or technique descriptions | CTI reports, ATT&CK | Medium-High |
+| 15 | [LLM Investigation Guide Generation](use-cases/rule-content-engineering/15-llm-investigation-guide-generation.md) | Generates structured triage guides by reasoning about detection logic | Rule files | Medium |
+| 16 | [Observable Artifact Extraction](use-cases/rule-content-engineering/16-observable-artifact-extraction.md) | Extracts and classifies observables from complex query logic | Rule files | Low-Medium |
+| 17 | [Rule Comparison & Gap Analysis](use-cases/rule-content-engineering/17-rule-comparison-and-gap-analysis.md) | Semantic comparison of rules across formats and query languages | Rule files, CTI reports | Medium |
+| 18 | [Rule Quality Assessment](use-cases/rule-content-engineering/18-rule-quality-assessment.md) | Assesses semantic quality, MITRE accuracy, and evasion gaps | Rule files | Medium |
+| 19 | [Detection Rule Generation](use-cases/rule-content-engineering/19-detection-rule-generation.md) | Generates candidate detection rules from threat intel or technique descriptions | CTI reports, ATT&CK | Medium-High |
 
 ### Strategic
 
 | # | Use Case | What AI Actually Does | Primary Data Input | Complexity |
 |---|----------|----------------------|-------------------|------------|
-| 20 | [Analyst Workflow Optimization](use-cases/20-analyst-workflow-optimization.md) | Identifies investigation patterns and generates improvement proposals | Triage workflow data | Medium |
-| 21 | [Threat Intelligence Synthesis](use-cases/21-threat-intelligence-synthesis.md) | Extracts TTPs from reports; compares against posture; generates actionable briefs | CTI reports, posture data | Medium |
-| 22 | [Detection Program Health Reporting](use-cases/22-detection-program-health-reporting.md) | Synthesizes all metrics into narrative program health reports | All metrics | Medium |
+| 20 | [Analyst Workflow Optimization](use-cases/strategic/20-analyst-workflow-optimization.md) | Identifies investigation patterns and generates improvement proposals | Triage workflow data | Medium |
+| 21 | [Threat Intelligence Synthesis](use-cases/strategic/21-threat-intelligence-synthesis.md) | Extracts TTPs from reports; compares against posture; generates actionable briefs | CTI reports, posture data | Medium |
+| 22 | [Detection Program Health Reporting](use-cases/strategic/22-detection-program-health-reporting.md) | Synthesizes all metrics into narrative program health reports | All metrics | Medium |
 
 ---
 
