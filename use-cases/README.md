@@ -1,6 +1,6 @@
 # Use Case Index
 
-This directory contains 22 documented use cases for applying AI and machine learning to detection engineering and SOC operations. Each use case is a detailed write-up covering what AI actually does, what the SIEM/SOAR should already handle, required data inputs, architecture patterns, and implementation guidance.
+This directory contains 23 documented use cases for applying AI and machine learning to detection engineering and SOC operations. Each use case is a detailed write-up covering what AI actually does, what the SIEM/SOAR should already handle, required data inputs, architecture patterns, and implementation guidance.
 
 ## Categorization
 
@@ -29,7 +29,7 @@ If your SIEM is not parsing logs correctly, your SOAR is not enriching alerts, o
 
 ## Status Tracking
 
-All 22 use cases with current development status. Each use case follows the standard [TEMPLATE.md](TEMPLATE.md).
+All 23 use cases with current development status. Each use case follows the standard [TEMPLATE.md](TEMPLATE.md).
 
 ### Alert Analysis
 
@@ -69,6 +69,7 @@ All 22 use cases with current development status. Each use case follows the stan
 | 17 | [Rule Comparison & Gap Analysis](rule-content-engineering/17-rule-comparison-and-gap-analysis.md) | Rule Content Engineering | Semantic comparison of rules across formats and query languages; analyzes rules against source threat reports | Medium | Draft |
 | 18 | [Rule Quality Assessment](rule-content-engineering/18-rule-quality-assessment.md) | Rule Content Engineering | Assesses semantic quality, MITRE mapping accuracy, and evasion gaps in detection logic | Medium | Draft |
 | 19 | [Detection Rule Generation](rule-content-engineering/19-detection-rule-generation.md) | Rule Content Engineering | Generates candidate detection rules from threat intel, CVE advisories, or ATT&CK technique descriptions | Medium-High | Draft |
+| 23 | [Synthetic Detection Testing Data Generation](rule-content-engineering/23-synthetic-detection-testing-data.md) | Rule Content Engineering | Generates diverse, schema-compliant synthetic log events (TP, FP, evasion variants) for validating detection rule logic | Medium | Draft |
 
 ### Strategic
 

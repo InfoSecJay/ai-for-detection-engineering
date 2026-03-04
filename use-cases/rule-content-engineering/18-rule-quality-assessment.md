@@ -164,6 +164,7 @@ A structured quality assessment per rule. Example:
 - [UC-17: Rule Comparison and Gap Analysis](17-rule-comparison-and-gap-analysis.md) -- Quality issues (incorrect MITRE mappings, overly broad rules) distort gap analysis results. Fix quality first.
 - [UC-15: LLM Investigation Guide Generation](15-llm-investigation-guide-generation.md) -- Generating investigation guides from low-quality rules propagates quality issues into analyst workflows.
 - [UC-19: Detection Rule Generation](19-detection-rule-generation.md) -- Quality assessment criteria should be applied to AI-generated rules as well.
+- [UC-23: Synthetic Detection Testing Data Generation](23-synthetic-detection-testing-data.md) -- Quality assessment identifies evasion gaps; UC-23 generates test data targeting those gaps to validate that remediated rules actually detect the evasion variants.
 
 ## References
 

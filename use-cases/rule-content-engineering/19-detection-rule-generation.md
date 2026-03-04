@@ -230,6 +230,7 @@ Translation notes:
 - [UC-18: Rule Quality Assessment](18-rule-quality-assessment.md) -- All generated rules should be assessed for quality before deployment. This catches LLM-generated rules that are syntactically correct but semantically weak.
 - [UC-15: LLM Investigation Guide Generation](15-llm-investigation-guide-generation.md) -- Generate investigation guides alongside new rules for a complete detection package.
 - [UC-16: Observable Artifact Extraction](16-observable-artifact-extraction.md) -- Extract observables from generated rules to verify they match the intended detection scope.
+- [UC-23: Synthetic Detection Testing Data Generation](23-synthetic-detection-testing-data.md) -- Generated rules need test data. UC-23 produces labeled synthetic events (true positives, false positives, evasion variants) to validate that generated rules fire correctly before deployment.
 
 ## References
 

@@ -39,7 +39,7 @@ AI use cases in detection engineering depend on mature foundational capabilities
 
 ## Use Case Index
 
-22 documented use cases organized by category. Each links to a detailed write-up covering what AI actually does, required data inputs, architecture patterns, and implementation guidance.
+23 documented use cases organized by category. Each links to a detailed write-up covering what AI actually does, required data inputs, architecture patterns, and implementation guidance.
 
 ### Alert Analysis
 
@@ -79,6 +79,7 @@ AI use cases in detection engineering depend on mature foundational capabilities
 | 17 | [Rule Comparison & Gap Analysis](use-cases/rule-content-engineering/17-rule-comparison-and-gap-analysis.md) | Semantic comparison of rules across formats and query languages | Rule files, CTI reports | Medium |
 | 18 | [Rule Quality Assessment](use-cases/rule-content-engineering/18-rule-quality-assessment.md) | Assesses semantic quality, MITRE accuracy, and evasion gaps | Rule files | Medium |
 | 19 | [Detection Rule Generation](use-cases/rule-content-engineering/19-detection-rule-generation.md) | Generates candidate detection rules from threat intel or technique descriptions | CTI reports, ATT&CK | Medium-High |
+| 23 | [Synthetic Detection Testing Data Generation](use-cases/rule-content-engineering/23-synthetic-detection-testing-data.md) | Generates diverse, schema-compliant synthetic log events for testing detection rule logic | Rule files, ATT&CK data, log schemas | Medium |
 
 ### Strategic
 
