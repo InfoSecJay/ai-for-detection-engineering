@@ -224,6 +224,16 @@ Translation notes:
 - **Intellectual property**: Understand your organization's policy on using AI-generated code in production security tooling. Some organizations require disclosure; others restrict it. Generated rules should carry metadata indicating AI generation.
 - **Cost**: Rule generation is a low-volume, high-value use case. Generating 10-20 rules per week costs pennies. The cost constraint is human review time, not LLM API costs.
 
+- **Benchmark methodology (CTI-REALM, Mar 2026)**: Microsoft published [CTI-REALM](https://www.microsoft.com/en-us/security/blog/2026/03/20/cti-realm-a-new-benchmark-for-end-to-end-detection-rule-generation-with-ai-agents/), the first public end-to-end benchmark for AI-driven detection rule generation. It scores agents on the full workflow: read CTI report → identify techniques → explore telemetry → iterate KQL → emit Sigma + KQL. 37 reports across Linux/AKS/Azure scenarios. Top model (Claude Opus 4.6 era) achieved 0.624–0.685; cloud detections were materially harder than Linux (0.282 vs. 0.585). Two key findings: more reasoning isn't always better, and the cloud-detection gap reveals real-world limits of current models. Use CTI-REALM as a methodology reference for your own validation harness; build a CTI-REALM-style golden set on your environment's actual rule generation tasks.
+
+- **Bundle tests with the generated rule (Panther pattern)**: [Panther's AI Detection Builder](https://siliconangle.com/2026/03/19/panther-rolls-ai-soc-platform-agents-learn-improve-time/) (GA March 2026) generates the rule and the unit tests in the same GitHub PR with mandatory human review before merge. This is the strongest version of the rule-generation pattern: every generated rule arrives with synthesized true-positive and false-positive test cases that gate merge. Combine UC-19 with [UC-23](23-synthetic-detection-testing-data.md) (synthetic test data generation) and [UC-26](26-continuous-detection-validation.md) (atomic-test validation) to operationalize.
+
+- **Healthy skepticism context**: Florian Roth (SigmaHQ founder) [published a critical perspective](https://www.linkedin.com/in/floroth/) in late 2025 on LLMs writing detection rules, arguing that the easy cases produce false confidence and the hard cases produce subtly broken rules. Worth reading as a counter-balance to vendor enthusiasm. The honest framing: UC-19 accelerates the routine cases (well-documented techniques, structured CTI inputs) but does not replace senior detection engineering judgment for novel or complex detection design.
+
+- **Vendor commoditization context (2026)**: Splunk Detection Builder Agent (Alpha Mar 2026), Personalized SPL Generator, Panther AI Detection Builder (GA Mar 2026), Sublime Security ADÉ (Autonomous Detection Engineer for email), CardinalOps TI-Ops, SOC Prime Uncoder AI v2, LimaCharlie agentic MDR pipeline, Sigma Assistant — all are productized 2026 implementations with overlapping capability. Build-vs-buy: vendor-native is faster for single-platform; UC-19 here remains valuable for multi-platform output (Sigma + multiple SIEMs from one input), rigorous validation harness integration, and provenance tracking ([UC-31](31-detection-content-provenance.md)).
+
+- **Provenance requirement**: Every AI-generated rule must carry provenance metadata identifying it as AI-generated, the model used, the prompt version, the human reviewer, and the validation harness pass. This is a non-negotiable requirement for compliance-sensitive environments and a prerequisite for [UC-31 (Detection Content Provenance & Supply Chain Integrity)](31-detection-content-provenance.md).
+
 ## Related Use Cases
 
 - [UC-17: Rule Comparison and Gap Analysis](17-rule-comparison-and-gap-analysis.md) -- Identified coverage gaps become generation targets. The gap analysis says "we have no rule for T1003.003 NTDS.dit extraction"; rule generation produces the candidate.
@@ -231,6 +241,10 @@ Translation notes:
 - [UC-15: LLM Investigation Guide Generation](15-llm-investigation-guide-generation.md) -- Generate investigation guides alongside new rules for a complete detection package.
 - [UC-16: Observable Artifact Extraction](16-observable-artifact-extraction.md) -- Extract observables from generated rules to verify they match the intended detection scope.
 - [UC-23: Synthetic Detection Testing Data Generation](23-synthetic-detection-testing-data.md) -- Generated rules need test data. UC-23 produces labeled synthetic events (true positives, false positives, evasion variants) to validate that generated rules fire correctly before deployment.
+- [UC-24: Cross-SIEM Rule Migration & Semantic Translation](24-cross-siem-rule-migration.md) -- For source rules with no native equivalent in the target platform, UC-24's translation step shares prompt engineering with UC-19's generation step.
+- [UC-25: AI Agent & MCP Activity Detection](25-ai-agent-mcp-detection.md) -- UC-19's generation patterns apply directly to writing detections for the new AI-agent attack surface.
+- [UC-26: Continuous Detection Validation](26-continuous-detection-validation.md) -- Validates generated rules against real attack execution, not just synthetic data.
+- [UC-31: Detection Content Provenance & Supply Chain Integrity](31-detection-content-provenance.md) -- AI-generated rules must carry full provenance metadata.
 
 ## References
 
@@ -241,3 +255,11 @@ Translation notes:
 - [Splunk Security Content](https://github.com/splunk/security_content) -- Reference rules in Splunk format for few-shot examples.
 - [MITRE ATT&CK](https://attack.mitre.org/) -- Technique descriptions as generation inputs.
 - [Atomic Red Team](https://github.com/redcanaryco/atomic-red-team) -- Atomic tests for techniques; useful for validating generated rules against known test procedures.
+- Microsoft Security Blog, [CTI-REALM Benchmark (Mar 2026)](https://www.microsoft.com/en-us/security/blog/2026/03/20/cti-realm-a-new-benchmark-for-end-to-end-detection-rule-generation-with-ai-agents/) -- The reference public benchmark for end-to-end agentic rule generation
+- arXiv, [RulePilot — LLM Agent for SPL/KQL Rule Writing and Conversion](https://arxiv.org/html/2511.12224)
+- Panther, [AI SOC Platform GA — AI Detection Builder with PR-based test bundling](https://siliconangle.com/2026/03/19/panther-rolls-ai-soc-platform-agents-learn-improve-time/)
+- Splunk, [Detection Studio + Detection Builder Agent](https://www.splunk.com/en_us/blog/security/from-reactive-to-agentic-with-enterprise-security-at-rsac-2026.html)
+- Sublime Security, [ADÉ — Autonomous Detection Engineer](https://www.msspalert.com/news/sublime-security-unveils-ai-agent-to-cut-email-threat-detection-from-weeks-to-hours)
+- SOC Prime, [Uncoder AI v2](https://socprime.com/blog/uncoder-ai-automates-cross-language-rule-translation-with-hybrid-ai/)
+- LimaCharlie, [Agentic MDR Pipeline — daily rule writing across customer tenants](https://limacharlie.io/blog/agentic-mdr-pipeline-detection-engineering-at-scale)
+- SigmaHQ, [Sigma Assistant project](https://github.com/SigmaHQ/sigma) — OpenAI-assisted Title/Description generation

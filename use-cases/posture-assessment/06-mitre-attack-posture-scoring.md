@@ -264,6 +264,13 @@ Each dimension is normalized to 0-100 and weighted by domain. Weights vary becau
 
 **Beware the "green heatmap" trap.** Executives love green heatmaps. If your scoring model is too generous, every technique lights up green and the posture report becomes meaningless. Calibrate thresholds to ensure the Degraded and Abandoned tiers are populated — a posture report that shows 90% Strong is either wrong or your detection program is genuinely exceptional (it probably is not).
 
+**MITRE ATT&CK v18 schema migration (Oct 2025, in active 2026 use).** v18 represents the framework's largest defensive overhaul: legacy *Detections* and *Data Sources* are retired and replaced with **Detection Strategies** (what behavior to look for) and **Analytics** (platform-specific how). Each Analytic now points to Log Sources and Data Components. This affects UC-06 in three ways:
+  1. **Rule re-mapping is required.** Your existing rule corpus is tagged against v17 Detections / Data Sources. Migrating tags to v18 Detection Strategies + Analytics is a corpus-wide schema migration. No vendor ships end-to-end automation for this yet — it's a real engineering project that overlaps the AI-for-DE scope.
+  2. **Posture scoring methodology gains a new axis.** Coverage can now be scored not just against techniques but against the canonical Detection Strategies and Analytics — providing a more granular, defender-aligned view than v17's data-source-centric model.
+  3. **Cross-walk maintenance.** Until your corpus migrates, maintain a v17↔v18 cross-walk so scores can be computed against either schema. The official MITRE migration documentation provides the cross-walk for the framework changes.
+
+**Vendor commoditization context (2026).** Splunk Detection Studio (GA 2026) ships built-in MITRE coverage scoring in the console. Sentinel MCP server includes a Graph Tool for coverage assessment. Google SecOps Unified Rules + Rules API (March 2026) include MITRE tag sync. Build-vs-buy: vendor-native is convenient if you're single-platform; UC-06 here remains valuable for multi-platform coverage and for environments that need transparent, vendor-neutral scoring methodology. The two-level scoring (per-rule SQS → per-technique confidence) and the LLM-narrated executive synthesis depth are uncommon in vendor-built capabilities.
+
 ## Related Use Cases
 
 - [UC-01: Detection Performance Analytics](../alert-analysis/01-detection-performance-analytics.md) — produces the per-rule metrics that feed Signal Quality scoring.
@@ -274,6 +281,9 @@ Each dimension is normalized to 0-100 and weighted by domain. Weights vary becau
 - [UC-09: Cross-Domain Detection Coverage](09-cross-domain-detection-coverage.md) — uses posture scores to evaluate multi-domain detection quality.
 - [UC-10: Executive Posture Reporting](10-executive-posture-reporting.md) — consumes posture scores and narratives for leadership reporting.
 - [UC-22: Detection Program Health Reporting](../strategic/22-detection-program-health-reporting.md) — incorporates posture scoring into program-level health metrics.
+- [UC-25: AI Agent & MCP Activity Detection](../rule-content-engineering/25-ai-agent-mcp-detection.md) — same posture scoring methodology applies to MITRE ATLAS coverage for the AI-agent attack surface.
+- [UC-26: Continuous Detection Validation](../rule-content-engineering/26-continuous-detection-validation.md) — validation evidence elevates a rule's signal quality and feeds the per-technique confidence score.
+- [UC-28: Detection Coverage Mapping for Compliance](28-compliance-detection-mapping.md) — same scoring methodology applied to a compliance-control taxonomy instead of MITRE ATT&CK.
 
 ## References
 
@@ -286,3 +296,7 @@ Each dimension is normalized to 0-100 and weighted by domain. Weights vary becau
 - [mitreattack-python](https://github.com/mitre-attack/mitreattack-python) — Python library for working with ATT&CK STIX data.
 - [Signal Quality Scoring](../../concepts/signal-quality-scoring.md) — detailed scoring methodology referenced in this use case.
 - [Detection Confidence Scoring](../../concepts/detection-confidence-scoring.md) — rollup methodology from rule-level to technique-level scoring.
+- [MITRE ATT&CK v18 Release Notes](https://attack.mitre.org/resources/updates/) — Detection Strategies + Analytics schema introduced.
+- [What's New in MITRE ATT&CK v18 (Picus Security)](https://www.picussecurity.com/resource/blog/whats-new-in-mitre-attack-v18) — Practitioner walkthrough of the schema overhaul.
+- [Splunk Detection Studio Documentation](https://help.splunk.com/en/splunk-enterprise-security-8/administer/8.4/detections/identify-optimal-detections-for-your-security-environment-using-detection-studio-in-splunk-enterprise-security) — Vendor implementation reference.
+- [Microsoft Sentinel MCP Server — coverage tooling](https://techcommunity.microsoft.com/blog/microsoft-security-blog/microsoft-sentinel-mcp-server---generally-available-with-exciting-new-capabiliti/4470125) — Vendor implementation reference.

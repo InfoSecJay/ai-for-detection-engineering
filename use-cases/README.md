@@ -1,6 +1,8 @@
 # Use Case Index
 
-This directory contains 23 documented use cases for applying AI and machine learning to detection engineering and SOC operations. Each use case is a detailed write-up covering what AI actually does, what the SIEM/SOAR should already handle, required data inputs, architecture patterns, and implementation guidance.
+This directory contains **31 documented use cases** for applying AI and machine learning to detection engineering and SOC operations. Each use case is a detailed write-up covering what AI actually does, what the SIEM/SOAR should already handle, required data inputs, architecture patterns, and implementation guidance.
+
+The original 23 (UC-01 through UC-23) constitute the foundational catalog. Use cases UC-24 through UC-31 were added April 2026 based on the [Q1–Q2 2026 research review](../docs/2026-q1q2-research-review.md), reflecting the state of the field as of that date.
 
 ## Categorization
 
@@ -29,7 +31,7 @@ If your SIEM is not parsing logs correctly, your SOAR is not enriching alerts, o
 
 ## Status Tracking
 
-All 23 use cases with current development status. Each use case follows the standard [TEMPLATE.md](TEMPLATE.md).
+All 31 use cases with current development status. Each use case follows the standard [TEMPLATE.md](TEMPLATE.md).
 
 ### Alert Analysis
 
@@ -40,6 +42,7 @@ All 23 use cases with current development status. Each use case follows the stan
 | 03 | [Automated Rule Tuning Recommendations](alert-analysis/03-automated-rule-tuning-recommendations.md) | Alert Analysis | Generates contextual tuning proposals with safety assessment and residual signal analysis | Medium | Draft |
 | 04 | [Detection Drift Monitoring](alert-analysis/04-detection-drift-monitoring.md) | Alert Analysis | Diagnoses likely root cause of rule silence or behavioral drift by cross-referencing data source dependencies | Medium | Draft |
 | 05 | [Temporal Pattern Detection](alert-analysis/05-temporal-pattern-detection.md) | Alert Analysis | Identifies complex temporal patterns (business-cycle, shifting schedules) and explains their operational context | Low-Medium | Draft |
+| 30 | [Self-Optimizing Closed-Loop Tuning](alert-analysis/30-self-optimizing-tuning.md) | Alert Analysis | Closes the loop on UC-03: analyst dispositions auto-generate, validate, deploy (via mandatory-review PR), and monitor tuning changes with rollback guardrails | Very High | Draft |
 
 ### Posture Assessment
 
@@ -50,6 +53,7 @@ All 23 use cases with current development status. Each use case follows the stan
 | 08 | [Kill Chain Completeness Analysis](posture-assessment/08-kill-chain-completeness-analysis.md) | Posture Assessment | Assesses operational meaningfulness of detection at each attack stage; identifies where attackers would evade the detection chain | Medium | Draft |
 | 09 | [Cross-Domain Detection Coverage](posture-assessment/09-cross-domain-detection-coverage.md) | Posture Assessment | Evaluates quality and complementarity of cross-domain coverage; identifies where adding a detection domain would provide most value | Medium | Draft |
 | 10 | [Executive Posture Reporting](posture-assessment/10-executive-posture-reporting.md) | Posture Assessment | Transforms technical posture scores into leadership-consumable narratives with trend analysis and investment recommendations | Medium | Draft |
+| 28 | [Detection Coverage Mapping for Compliance](posture-assessment/28-compliance-detection-mapping.md) | Posture Assessment | Maps detection content to compliance control libraries (NIST 800-53/COSAiS, CSA AICM, ISO 27001, PCI DSS, EU AI Act); produces audit-ready evidence and cross-regime work prioritization | Medium-High | Draft |
 
 ### AI-Assisted Triage
 
@@ -70,6 +74,11 @@ All 23 use cases with current development status. Each use case follows the stan
 | 18 | [Rule Quality Assessment](rule-content-engineering/18-rule-quality-assessment.md) | Rule Content Engineering | Assesses semantic quality, MITRE mapping accuracy, and evasion gaps in detection logic | Medium | Draft |
 | 19 | [Detection Rule Generation](rule-content-engineering/19-detection-rule-generation.md) | Rule Content Engineering | Generates candidate detection rules from threat intel, CVE advisories, or ATT&CK technique descriptions | Medium-High | Draft |
 | 23 | [Synthetic Detection Testing Data Generation](rule-content-engineering/23-synthetic-detection-testing-data.md) | Rule Content Engineering | Generates diverse, schema-compliant synthetic log events (TP, FP, evasion variants) for validating detection rule logic | Medium | Draft |
+| 24 | [Cross-SIEM Rule Migration & Semantic Translation](rule-content-engineering/24-cross-siem-rule-migration.md) | Rule Content Engineering | Bulk migration of detection-rule corpus across SIEM platforms via semantic dedup against target's prebuilt library + intent-aware translation of the residual | High | Draft |
+| 25 | [AI Agent & MCP Activity Detection](rule-content-engineering/25-ai-agent-mcp-detection.md) | Rule Content Engineering | Detection content for AI agents, MCP servers, A2A telemetry, agent-tool-call traces; OWASP Agentic Top 10 / MITRE ATLAS coverage; LLM-callout malware detection | High | Draft |
+| 26 | [Continuous Detection Validation (Atomic Test CI)](rule-content-engineering/26-continuous-detection-validation.md) | Rule Content Engineering | AI-orchestrated execution of Atomic Red Team / Caldera / Stratus tests against rules with diagnosis of failure causes and evasion variant generation | High | Draft |
+| 27 | [AI-Driven Log Source Onboarding & Parser Generation](rule-content-engineering/27-log-source-onboarding.md) | Rule Content Engineering | Generates ingest pipeline configs from vendor docs and samples; suggests schema mappings; monitors field-population drift; identifies rogue data sources | Medium-High | Draft |
+| 31 | [Detection Content Provenance & Supply Chain Integrity](rule-content-engineering/31-detection-content-provenance.md) | Rule Content Engineering | Cryptographic signing, attribution chains, modification anomaly detection, AI-generation tracking, and audit-trail narration for the detection-content lifecycle | Medium-High | Draft |
 
 ### Strategic
 
@@ -78,6 +87,7 @@ All 23 use cases with current development status. Each use case follows the stan
 | 20 | [Analyst Workflow Optimization](strategic/20-analyst-workflow-optimization.md) | Strategic | Identifies investigation patterns across analysts; finds guide gaps; surfaces automation candidates from workflow data | Medium | Draft |
 | 21 | [Threat Intelligence Synthesis](strategic/21-threat-intelligence-synthesis.md) | Strategic | Extracts TTPs from natural-language reports; maps to ATT&CK; compares against posture; generates actionable gap briefs with work orders | Medium | Draft |
 | 22 | [Detection Program Health Reporting](strategic/22-detection-program-health-reporting.md) | Strategic | Synthesizes all quantitative program metrics into narrative health reports for leadership with trend analysis and investment recommendations | Medium | Draft |
+| 29 | [SIEM Cost & Data Tiering Optimization](strategic/29-siem-cost-data-tiering.md) | Strategic | Analyzes per-source cost vs. detection coverage value; recommends hot/warm/cold tier placement with detection-impact modeling; field-level filtering opportunities | Medium | Draft |
 
 ---
 

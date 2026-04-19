@@ -171,7 +171,13 @@ Alert fires → SOAR playbook runs enrichment steps → context package assemble
 
 **Scale considerations.** If you process 1,000 alerts per day and 40% survive deterministic filtering, you're making 400 LLM calls per day. At $0.01-0.03 per call, that's $4-12/day or $120-360/month — trivial compared to analyst salary. The cost concern is overblown for most SOCs. The latency concern (2-10 seconds per call) is more relevant for time-sensitive alerts.
 
-**Regulatory and compliance.** Sending alert data (which may contain PII, hostnames, user identifiers) to external LLM APIs may violate data residency or privacy requirements. Evaluate self-hosted LLM deployment (e.g., vLLM, Ollama) or cloud provider AI services that keep data within your compliance boundary.
+**Regulatory and compliance.** Sending alert data (which may contain PII, hostnames, user identifiers) to external LLM APIs may violate data residency or privacy requirements. Evaluate self-hosted LLM deployment (e.g., vLLM, Ollama) or cloud provider AI services that keep data within your compliance boundary. See [privacy-and-data-handling.md](../../docs/privacy-and-data-handling.md) for the per-use-case data egress profile and the [governance-mapping.md](../../docs/governance-mapping.md) for NIST IR 8596 / EU AI Act considerations.
+
+**Calibration is the most important quality metric** — and the one most teams skip. Stated confidence should match actual accuracy. Recent research (AIDR / "Information-Dense Reasoning," arXiv 2512.08169; "Decision-Aware Trust Signal Alignment for SOC Alert Triage," arXiv 2601.04486) demonstrates that out-of-the-box LLM confidence is poorly calibrated for security triage and that explicit alignment significantly improves the signal-to-action ratio. AIDR achieves 40.6% latency reduction with auditability properties vs. Chain-of-Thought baselines. Build calibration measurement into the [validation harness](../../concepts/validation-harness.md) — Expected Calibration Error (ECE) per confidence band — and recalibrate quarterly.
+
+**Vendor commoditization context (2026).** LLM triage verdicts are the most-shipped vendor capability of 2026. Charlotte AI Detection Triage (claimed 98% accuracy + 40 hours/week saved), Google SecOps Triage and Investigation Agent (TIN), Microsoft Defender Security Analyst Agent, Splunk Triage Agent, Hunters Pathfinder, Datadog Bits AI Security Analyst, Conifers, Prophet Security, Qevlar all ship productized triage verdict capabilities. Many vendor verdict products are essentially this use case productized. Build-vs-buy: vendor-native is the right call for single-platform environments; UC-11 here remains valuable for multi-platform / vendor-neutral / transparency-required environments. The depth of cite-and-verify, calibration measurement, and adversarial controls in UC-11 remains differentiated.
+
+**Adversarial inputs are now the norm.** Prompt injection in alert payloads, social-engineered framing in email-related alerts, and PROMPTFLUX/PROMPTSTEAL-class malware (Mandiant M-Trends 2026) that calls LLMs mid-execution all affect this use case. Apply the controls in [adversarial-ai-considerations.md](../../concepts/adversarial-ai-considerations.md) — specifically Attack 1 (prompt injection), Attack 4 (feedback poisoning), and Attack 9 (LLM-callout malware detection).
 
 ## Related Use Cases
 
@@ -180,12 +186,22 @@ Alert fires → SOAR playbook runs enrichment steps → context package assemble
 - [UC-14: Agentic Investigation Execution](14-agentic-investigation-execution.md) — Extends beyond single-turn verdicts to multi-step investigations where the LLM actively gathers additional data.
 - [UC-15: LLM Investigation Guide Generation](../rule-content-engineering/15-llm-investigation-guide-generation.md) — Generates the investigation guides that can be included in the triage context package.
 - [UC-03: Automated Rule Tuning Recommendations](../alert-analysis/03-automated-rule-tuning-recommendations.md) — FP patterns identified during triage should feed back into tuning recommendations.
+- [UC-30: Self-Optimizing Closed-Loop Tuning](../alert-analysis/30-self-optimizing-tuning.md) — Closed-loop variant of UC-03 that consumes UC-11 dispositions automatically.
+- [UC-25: AI Agent & MCP Activity Detection](../rule-content-engineering/25-ai-agent-mcp-detection.md) — Same tiered-model and adversarial-control patterns apply to triaging agent-related alerts.
+- [Validation Harness](../../concepts/validation-harness.md) — Calibration measurement (ECE) is essential for this use case.
+- [Adversarial AI Considerations](../../concepts/adversarial-ai-considerations.md) — Prompt injection, feedback poisoning, LLM-callout malware controls.
 
 ## References
 
 - Anthropic, "Claude Structured Output" — Using JSON mode and tool use for consistent LLM output parsing
-- OWASP, "Agentic AI Threats and Mitigations" (2025) — Security considerations for LLM-integrated workflows
-- Anton Chuvakin, "Simple to Ask: Is Your SOC AI Ready? Not Simple to Answer!" (October 2025) — Framework for evaluating SOC readiness for AI triage
-- Dropzone AI, "Autonomous SOC Analysis" — Commercial implementation of LLM-based alert triage
-- Prophet Security, "Agentic AI for SOC" — Commercial implementation of LLM triage with enrichment integration
-- Prompt Engineering Guide (promptingguide.ai) — Techniques for structured LLM prompting applicable to triage verdict generation
+- OWASP, [Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) and [Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) — Security considerations for LLM-integrated workflows
+- Anton Chuvakin, ["Beyond 'Is Your SOC AI Ready?'"](https://medium.com/anton-on-security/beyond-is-your-soc-ai-ready-plan-the-journey-c9654a9ee175) (Jan 2026) — AI Error Budget framework
+- arXiv, [AIDR — Information-Dense Reasoning for SOC Triage (2512.08169)](https://arxiv.org/html/2512.08169) — 40.6% latency reduction with auditability
+- arXiv, [Decision-Aware Trust Signal Alignment for SOC Alert Triage (2601.04486)](https://arxiv.org/abs/2601.04486) — Calibration scoring methodology
+- arXiv, [CORTEX — Collaborative LLM Agents for Alert Triage (2510.00311)](https://arxiv.org/html/2510.00311v1) — Multi-agent triage architecture
+- arXiv, [CyberSOCEval Benchmark (2509.20166)](https://arxiv.org/html/2509.20166v2)
+- Mandiant, [M-Trends 2026](https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026) — PROMPTFLUX/PROMPTSTEAL adversarial-AI patterns
+- CrowdStrike, [Charlotte AI Detection Triage](https://ir.crowdstrike.com/news-releases/news-release-details/crowdstrike-delivers-next-breakthrough-ai-powered-agentic) — Vendor reference (98% claim — see [research review](../../docs/2026-q1q2-research-review.md))
+- Hunters Security, [Pathfinder AI](https://www.hunters.security/pathfinder-ai) — Vendor reference for closed-loop triage
+- Microsoft Defender, [Security Analyst Agent](https://techcommunity.microsoft.com/blog/microsoftthreatprotectionblog/security-copilot-in-defender-empowering-the-soc-with-assistive-and-autonomous-ai/4503047) — Vendor reference
+- Dropzone AI, [Agentic SOC Platform](https://www.dropzone.ai/blog/announcing-the-agentic-soc) — Vendor reference

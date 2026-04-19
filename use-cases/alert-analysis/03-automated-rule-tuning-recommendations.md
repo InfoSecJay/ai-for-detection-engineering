@@ -304,11 +304,16 @@ POST-TUNING MONITORING RECOMMENDATION
 
 - **Exclusions are not the only tuning lever**: Sometimes the right action is not to add exclusions but to modify the rule logic itself — adjust thresholds, add conditions, change the time window. The AI should consider whether the rule's core logic is the problem, not just the entities it fires on. A rule that detects "any scheduled task creation" should probably be rewritten to detect "scheduled task creation with suspicious characteristics," not patched with a growing list of exclusions.
 
+- **Vendor commoditization context (2026)**: Hunters Pathfinder, Prophet Security, Intezer, and LimaCharlie all ship productized tuning recommendation capabilities — frequently going beyond UC-03 into the closed-loop pattern of [UC-30](30-self-optimizing-tuning.md). Build-vs-buy: the vendor versions are convenient if they're already in your stack and you accept their auto-eligibility policies. Build (using UC-03 / UC-30 here) when you need a vendor-neutral approach, custom safety policies, or transparent reasoning. The recommend-with-reasoning + safety analysis depth in UC-03 remains a differentiator over most vendor-built capabilities, which optimize for autonomy over transparency.
+
 ## Related Use Cases
 
 - **UC-01 (Detection Performance Analytics)**: Identifies which rules need tuning and prioritizes them.
 - **UC-02 (Entity Cardinality Noise Analysis)**: Provides the entity analysis that UC-03's tuning proposals are based on.
 - **UC-04 (Detection Drift Monitoring)**: Post-tuning monitoring to detect if tuning actions caused unintended drift or if new noise sources emerged.
+- **[UC-30: Self-Optimizing Closed-Loop Tuning](30-self-optimizing-tuning.md)**: The closed-loop variant of UC-03. UC-03 generates recommendations a human applies; UC-30 closes the loop with automatic deployment via mandatory-review PRs and rollback monitoring. Adopt UC-30 only after UC-03 is mature.
+- **[UC-26: Continuous Detection Validation](../rule-content-engineering/26-continuous-detection-validation.md)**: Tuning changes should be validated via Atomic Red Team or equivalent before merge.
+- **[UC-31: Detection Content Provenance](../rule-content-engineering/31-detection-content-provenance.md)**: Tuning actions are rule modifications and must carry full provenance metadata.
 
 ## References
 

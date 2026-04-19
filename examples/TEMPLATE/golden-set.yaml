@@ -1,0 +1,44 @@
+# Golden Set — UC-XX
+#
+# Hand-curated input/expected-output pairs for evaluating UC-XX.
+# See ../../concepts/validation-harness.md for the spec this implements.
+#
+# Each entry is one example. The eval runner loads this file, renders prompt.md
+# with each input, calls the model, and scores against `expected`.
+
+version: 1
+use_case: UC-XX
+last_reviewed: 2026-04-18
+owner: detection-engineering
+
+examples:
+  - id: ucXX-golden-001
+    notes: "[Why this example is in the set — what failure mode does it catch?]"
+    input:
+      # The full input payload as it would arrive at the prompt
+      field_a: "..."
+      field_b: "..."
+    expected:
+      # The deterministic checks the eval runner will apply
+      field1: "expected_value"
+      must_cite:
+        - "specific input span the model should reference"
+      must_not_invent:
+        - "field that doesn't exist in the input"
+        - "entity name not in the input"
+      schema_valid: true
+
+  - id: ucXX-golden-002
+    notes: "[Edge case: what makes this hard?]"
+    input:
+      field_a: "..."
+      field_b: "..."
+    expected:
+      field1: "different_expected_value"
+      must_cite:
+        - "..."
+      must_not_invent: []
+      schema_valid: true
+
+  # Add 30+ examples for a meaningful golden set; see validation-harness.md
+  # for size guidance per use case type.

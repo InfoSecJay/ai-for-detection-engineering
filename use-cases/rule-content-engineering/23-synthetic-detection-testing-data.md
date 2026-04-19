@@ -214,6 +214,10 @@ A labeled set of synthetic log events with expected detection outcomes. Example 
 - **Regulatory and compliance context.** Some compliance frameworks (SOC 2, PCI DSS, NIST CSF) require evidence of detection testing. AI-generated test data with labeled outcomes and automated pass/fail results provides auditable test evidence, but document the methodology and get compliance team approval for using synthetic test data.
 - **Correlation rule testing requires coordinated generation.** Testing correlation rules (multi-rule, multi-event) requires generating sets of events that share entity values, maintain causal ordering, and span the correct time windows. Workflow 3 (attack scenario sequences) addresses this, but the prompt complexity increases significantly. Start with single-rule test data before attempting correlation sequences.
 
+- **Relationship to UC-26 (Continuous Detection Validation)**: UC-23 generates *synthetic logs* that exercise rule logic without executing real attacks. UC-26 orchestrates *real attack execution* (Atomic Red Team / Caldera / Stratus) and observes whether detection fires across the full ingest-to-alert pipeline. They are complementary, not redundant: UC-23 catches "the rule's parsing-side logic is broken"; UC-26 catches "the data source isn't ingested in the test environment." Mature CI pipelines run both — UC-23 on every PR (fast, cheap) and UC-26 on a less frequent cadence (slower, requires execution environment). See UC-26 for the orchestration framework.
+
+- **Bundle test generation with rule generation (Panther pattern, 2026)**: Panther's AI Detection Builder (GA Mar 2026) generates the rule and the unit tests in the same GitHub PR. This is the strongest version of the rule-engineering pattern: every generated rule arrives with tests that gate merge. UC-23 is the "tests" half of this bundle; combine with [UC-19](19-detection-rule-generation.md) for end-to-end generation.
+
 ## Related Use Cases
 
 - [UC-18: Rule Quality Assessment](18-rule-quality-assessment.md) -- UC-18 identifies evasion gaps and quality issues in detection rules; UC-23 generates test data targeting those specific gaps to validate that remediated rules actually detect the identified evasion variants.
@@ -221,6 +225,9 @@ A labeled set of synthetic log events with expected detection outcomes. Example 
 - [UC-17: Rule Comparison and Gap Analysis](17-rule-comparison-and-gap-analysis.md) -- Gap analysis identifies techniques with no detection coverage. When new rules are created to fill those gaps, UC-23 generates test data to validate the new rules.
 - [UC-16: Observable Artifact Extraction](16-observable-artifact-extraction.md) -- Extracted observables from UC-16 define what field/value patterns a rule matches. UC-23 generates events containing those exact patterns (and variants that test pattern boundaries).
 - [UC-15: LLM Investigation Guide Generation](15-llm-investigation-guide-generation.md) -- Investigation guides describe expected artifacts for true positives. UC-23's true-positive test data should produce those same artifacts, providing a consistency check between the guide and the test data.
+- [UC-26: Continuous Detection Validation](26-continuous-detection-validation.md) -- Complementary: UC-23 is synthetic-log validation, UC-26 is real-execution validation. Mature CI runs both.
+- [UC-25: AI Agent & MCP Activity Detection](25-ai-agent-mcp-detection.md) -- New rule families need new synthetic test data; UC-23 patterns extend to agent telemetry test data.
+- [UC-30: Self-Optimizing Closed-Loop Tuning](../alert-analysis/30-self-optimizing-tuning.md) -- Closed-loop tuning changes must pass UC-23 synthetic-data tests as a CI gate before merge.
 
 ## References
 

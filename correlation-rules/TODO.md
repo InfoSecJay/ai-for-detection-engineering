@@ -14,13 +14,13 @@ Remaining work items for the 55-rule ES|QL correlation rule catalog.
 
 **Canonical domains**: `endpoint`, `identity`, `cloud`, `network_fw`, `network_ndr`, `proxy`, `dns`, `email` (planned additions: `vpn`, `waf`, `dlp`).
 
-### 2. Cross-Rule Deduplication Guidance
+### 1b. Identity Resolution for Cross-Domain Joins — SPEC COMPLETED
 
-When multiple correlation rules fire for the same entity in the same time window, downstream consumers (analysts, AI triage tools) need deduplication guidance. Requires a dedicated catalog section covering:
+CORR-5E and other cross-domain rules joining on `user.name` produce silent false negatives when domains use different naming conventions (email: `jane.smith@corp.com`, endpoint: `CORP\jsmith`, identity: `jsmith`). The reference design for `lookup-identity-resolution` and the recommended ingest-pipeline normalization step are documented in [identity-resolution-pattern.md](identity-resolution-pattern.md). Implementation requires partnership with the IAM team to populate the lookup; the rule-side migration to join on `Esql.canonical_user_id` remains as future work pending lookup availability.
 
-- Expected overlap between tiers (e.g., a user triggering CORR-1A + CORR-2B + CORR-3A simultaneously is correct behavior, not a bug)
-- How AI tools (UC-11, UC-12) should deduplicate and merge correlated clusters
-- Priority ordering when the same entity has alerts from multiple tiers
+### 2. Cross-Rule Deduplication Guidance — COMPLETED
+
+See [cross-rule-deduplication.md](cross-rule-deduplication.md) for the dedup spec covering expected overlap patterns, the consolidation algorithm, tier-priority headline selection, and consumption patterns for UC-11, UC-12, UC-14. Implementations are environment-specific (depend on your stream processor) but the algorithm and priorities are normative.
 
 ### 3. CORR-5K Container Dataset Filters
 

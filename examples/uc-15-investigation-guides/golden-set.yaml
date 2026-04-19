@@ -1,0 +1,201 @@
+version: 1
+use_case: UC-15
+last_reviewed: 2026-04-18
+owner: detection-engineering
+notes: |
+  Starter golden set with 5 examples covering different rule families and
+  query languages. Production golden sets should target ~50 examples
+  spanning your environment's actual rule diversity.
+
+examples:
+  - id: uc15-golden-001
+    notes: "Standard endpoint rule in Sigma — happy path"
+    input:
+      rule_content: |
+        title: Suspicious PowerShell Encoded Command
+        id: a1b2c3d4-1111-2222-3333-444444444444
+        status: production
+        description: Detects PowerShell execution with -EncodedCommand or -enc flag
+        logsource:
+          product: windows
+          category: process_creation
+        detection:
+          selection:
+            Image|endswith: '\powershell.exe'
+            CommandLine|contains:
+              - '-EncodedCommand'
+              - '-enc '
+          condition: selection
+        tags:
+          - attack.execution
+          - attack.t1059.001
+        level: medium
+    expected:
+      schema_required_fields:
+        - rule_id
+        - rule_name
+        - what_this_detects
+        - first_actions
+        - key_questions
+        - true_positive_indicators
+        - false_positive_indicators
+        - escalation_criteria
+        - expected_pivot_fields
+        - evidence
+      must_cite:
+        - "powershell.exe"
+        - "-EncodedCommand"
+      must_not_invent:
+        - "process.code_signature"  # not referenced by this rule
+        - "T1003"                    # rule maps T1059.001 only
+        - "Sysmon EventID 11"        # rule doesn't specify event ID
+      pivot_fields_must_be_subset_of_input: true
+      mitre_tactics_must_be_subset_of_input:
+        - "execution"
+      mitre_techniques_must_be_subset_of_input:
+        - "T1059.001"
+
+  - id: uc15-golden-002
+    notes: "Identity rule — different domain, different pivot fields"
+    input:
+      rule_content: |
+        title: Multiple Failed MFA Attempts Followed by Success
+        id: b2c3d4e5-2222-3333-4444-555555555555
+        description: Detects 5+ failed MFA prompts followed by a successful auth within 10 minutes for the same user
+        logsource:
+          product: okta
+          service: system
+        detection:
+          failed_mfa:
+            eventType: 'user.mfa.attempt_bypass'
+            outcome.result: 'FAILURE'
+          successful_auth:
+            eventType: 'user.session.start'
+            outcome.result: 'SUCCESS'
+          condition: failed_mfa | count() by user.email > 5 followed by successful_auth within 10m
+        tags:
+          - attack.credential_access
+          - attack.t1110.003
+          - attack.t1621
+        level: high
+    expected:
+      schema_required_fields: [rule_id, rule_name, what_this_detects, first_actions, key_questions, true_positive_indicators, false_positive_indicators, escalation_criteria, expected_pivot_fields, evidence]
+      must_cite:
+        - "MFA"
+        - "user.email"
+      must_not_invent:
+        - "process.command_line"  # endpoint field not in identity rule
+        - "host.name"              # not relevant to this Okta rule
+        - "T1059"                  # rule maps T1110.003 and T1621 only
+      pivot_fields_must_be_subset_of_input: true
+      mitre_tactics_must_be_subset_of_input:
+        - "credential_access"
+      mitre_techniques_must_be_subset_of_input:
+        - "T1110.003"
+        - "T1621"
+
+  - id: uc15-golden-003
+    notes: "Network firewall rule — different domain again"
+    input:
+      rule_content: |
+        title: Outbound Connection to Tor Exit Node
+        id: c3d4e5f6-3333-4444-5555-666666666666
+        description: Detects outbound connection to a known Tor exit node IP
+        logsource:
+          product: palo_alto_networks
+          category: traffic
+        detection:
+          selection:
+            destination.ip: '%tor_exit_nodes_lookup%'
+            event.action: 'allow'
+            network.direction: 'outbound'
+          condition: selection
+        tags:
+          - attack.command_and_control
+          - attack.t1090.003
+        level: medium
+    expected:
+      schema_required_fields: [rule_id, rule_name, what_this_detects, first_actions, key_questions, true_positive_indicators, false_positive_indicators, escalation_criteria, expected_pivot_fields, evidence]
+      must_cite:
+        - "Tor exit node"
+        - "destination.ip"
+      must_not_invent:
+        - "process.name"
+        - "user.email"
+        - "T1059"
+      pivot_fields_must_be_subset_of_input: true
+      mitre_tactics_must_be_subset_of_input:
+        - "command_and_control"
+      mitre_techniques_must_be_subset_of_input:
+        - "T1090.003"
+
+  - id: uc15-golden-004
+    notes: "Edge case: rule with thin description — model must reason from query, not metadata"
+    input:
+      rule_content: |
+        title: rdp_lateral
+        id: d4e5f6g7-4444-5555-6666-777777777777
+        description: Suspicious RDP activity
+        logsource:
+          product: windows
+          service: security
+        detection:
+          selection:
+            EventID: 4624
+            LogonType: 10
+            IpAddress|cidr: '10.0.0.0/8'
+          filter:
+            TargetUserName|endswith: '$'
+          condition: selection and not filter
+        tags:
+          - attack.lateral_movement
+          - attack.t1021.001
+        level: medium
+    expected:
+      schema_required_fields: [rule_id, rule_name, what_this_detects, first_actions, key_questions, true_positive_indicators, false_positive_indicators, escalation_criteria, expected_pivot_fields, evidence]
+      must_cite:
+        - "EventID 4624"
+        - "LogonType 10"
+      must_not_invent:
+        - "PowerShell"  # not in rule
+        - "T1003"        # rule maps T1021.001
+      what_this_detects_must_describe:
+        # The model must reason about what RDP-from-internal-IP detection means
+        # despite the rule's thin description
+        - "RDP"
+        - "remote logon"
+      pivot_fields_must_be_subset_of_input: true
+
+  - id: uc15-golden-005
+    notes: "Cloud rule with rich query — tests that model uses CloudTrail-specific pivot fields"
+    input:
+      rule_content: |
+        title: AWS IAM Role Trust Policy Modified to Allow Cross-Account Access
+        id: e5f6g7h8-5555-6666-7777-888888888888
+        description: Detects modification of IAM role trust policy to add an external AWS account principal
+        logsource:
+          product: aws
+          service: cloudtrail
+        detection:
+          selection:
+            event.action: 'UpdateAssumeRolePolicy'
+            event.outcome: 'success'
+          condition: selection and aws.cloudtrail.request_parameters.policy_document contains 'arn:aws:iam'
+        tags:
+          - attack.persistence
+          - attack.t1098.001
+        level: high
+    expected:
+      schema_required_fields: [rule_id, rule_name, what_this_detects, first_actions, key_questions, true_positive_indicators, false_positive_indicators, escalation_criteria, expected_pivot_fields, evidence]
+      must_cite:
+        - "UpdateAssumeRolePolicy"
+        - "trust policy"
+      must_not_invent:
+        - "process.name"     # cloud event, no process
+        - "host.name"        # no host
+        - "T1059"
+      pivot_fields_must_be_subset_of_input: true
+      mitre_tactics_must_be_subset_of_input:
+        - "persistence"
+      mitre_techniques_must_be_subset_of_input:
+        - "T1098.001"

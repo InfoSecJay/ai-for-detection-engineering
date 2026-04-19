@@ -168,12 +168,18 @@ Example for CTI alignment:
 - **Gap analysis is only useful if gaps get closed**: The output of gap analysis must feed into a detection engineering backlog with prioritization. A gap report that sits in a dashboard without action is waste.
 - **Cross-team value**: Gap analysis results are valuable for communicating detection posture to security leadership. "We cover 12 of 18 known procedures for T1053" is a concrete metric that drives investment decisions.
 
+- **Foundation for cross-SIEM migration (2026)**: UC-17's semantic comparison capability scales up to corpus-level cross-SIEM rule migration in [UC-24](24-cross-siem-rule-migration.md). The comparison logic — embed two rule bodies, judge semantic equivalence — is identical; UC-24 applies it across every source-rule × target-library-rule pair to drive deduplication decisions. Microsoft Sentinel's AI-Powered SIEM Migration (Splunk + QRadar → Sentinel), Elastic's Automatic Migration (Splunk → Elastic), and SOC Prime Uncoder AI v2 (10+ source / 21+ target) are the productized 2026 implementations.
+
+- **MITRE ATT&CK v18 schema migration (Oct 2025)**: The replacement of legacy Detections / Data Sources with Detection Strategies + Analytics changes the comparison primitives. Comparing two rules under v18 requires comparing not just the queries but the Detection Strategies and Analytics they instantiate. Plan for v18-aware comparison as your corpus migrates.
+
 ## Related Use Cases
 
 - [UC-16: Observable Artifact Extraction](16-observable-artifact-extraction.md) -- Observable inventories are the foundation for meaningful rule comparison.
 - [UC-18: Rule Quality Assessment](18-rule-quality-assessment.md) -- Quality issues (overly broad rules, incorrect MITRE mappings) must be resolved for accurate gap analysis.
 - [UC-19: Detection Rule Generation](19-detection-rule-generation.md) -- Identified gaps become input for generating new detection rules.
 - [UC-15: LLM Investigation Guide Generation](15-llm-investigation-guide-generation.md) -- When gap analysis identifies redundant rules for consolidation, investigation guides need updating.
+- [UC-24: Cross-SIEM Rule Migration & Semantic Translation](24-cross-siem-rule-migration.md) -- Scales UC-17's comparison logic to corpus-level migration anchored on a target SIEM's prebuilt library.
+- [UC-26: Continuous Detection Validation](26-continuous-detection-validation.md) -- Validation results inform whether "redundant" rules actually provide complementary detection coverage in practice.
 
 ## References
 

@@ -1,0 +1,120 @@
+version: 1
+use_case: UC-01
+last_reviewed: 2026-04-18
+owner: detection-engineering
+notes: |
+  Golden set has two parts:
+  - pass1_examples: input batches with expected per-rule observations
+  - pass2_examples: input observation sets with expected portfolio synthesis
+  Production sets should target ~50 pass-1 batches and ~20 pass-2 syntheses
+  drawn from real environment metrics.
+
+pass1_examples:
+  - id: uc01-pass1-001
+    notes: "Batch with one obvious noisy rule and one healthy rule"
+    input:
+      rules:
+        - rule_id: "siem-rule-00421"
+          rule_name: "Suspicious PowerShell Encoded Command"
+          rule_description: "Detects PowerShell -EncodedCommand usage"
+          severity: "medium"
+          metrics:
+            volume_30d: 47000
+            daily_avg_30d: 1566.7
+            volume_prior_30d: 12000
+            trend_pct_change: 291.7
+            entity_cardinality:
+              user.name: 2
+              host.name: 1
+              process.parent.name: 1
+            top_n_concentration:
+              - {entity_field: "user.name", entity_value: "SVC-DEPLOY", percent_of_volume: 92.3}
+              - {entity_field: "host.name", entity_value: "BUILD-SVR-01", percent_of_volume: 100.0}
+            periodicity: "every 5 minutes during business hours"
+            co_occurrence_rate: 0.02
+            silent_with_active_data_source: false
+            data_source: "endpoint.process"
+        - rule_id: "siem-rule-00388"
+          rule_name: "Successful Privilege Escalation via DCSync"
+          rule_description: "Detects DCSync replication request from non-DC source"
+          severity: "critical"
+          metrics:
+            volume_30d: 3
+            daily_avg_30d: 0.1
+            volume_prior_30d: 2
+            trend_pct_change: 50.0
+            entity_cardinality:
+              user.name: 3
+              host.name: 3
+            top_n_concentration: []
+            periodicity: "irregular"
+            co_occurrence_rate: 0.67
+            silent_with_active_data_source: false
+            data_source: "identity.windows"
+    expected:
+      schema_required_fields: [observations]
+      observations_must_cover_all_input_rules: true
+      per_rule_assertions:
+        - rule_id: "siem-rule-00421"
+          must_have_health_state_in: ["noisy", "degraded"]
+          must_cite_metrics_containing: ["SVC-DEPLOY", "92"]
+          must_have_priority_signals:
+            high_volume_low_cardinality: true
+            single_entity_dominance: true
+        - rule_id: "siem-rule-00388"
+          must_have_health_state_in: ["healthy", "functional"]
+          must_have_priority_signals:
+            high_volume_low_cardinality: false
+            single_entity_dominance: false
+      must_not_invent:
+        - "siem-rule-99999"  # not in input
+        - "T1059"             # not in input metadata for these rules
+        - "host.name: PROD-WEB-01"  # not in top-N
+
+pass2_examples:
+  - id: uc01-pass2-001
+    notes: "Synthesis with one cluster of related noise (build infra) and one critical attention item"
+    input:
+      observations:
+        - rule_id: "siem-rule-00421"
+          rule_name: "Suspicious PowerShell Encoded Command"
+          health_state: "noisy"
+          primary_concern: "92% of volume from SVC-DEPLOY on BUILD-SVR-01"
+          priority_signals:
+            high_volume_low_cardinality: true
+            single_entity_dominance: true
+            increasing_trend_unaddressed: true
+        - rule_id: "siem-rule-00422"
+          rule_name: "PowerShell Script Block Logging - Suspicious Patterns"
+          health_state: "noisy"
+          primary_concern: "78% of volume from SVC-DEPLOY on BUILD-SVR-01"
+          priority_signals:
+            single_entity_dominance: true
+        - rule_id: "siem-rule-00423"
+          rule_name: "Suspicious Process Creation - Build Tools"
+          health_state: "noisy"
+          primary_concern: "85% of volume from SVC-DEPLOY on BUILD-SVR-01 and BUILD-SVR-02"
+          priority_signals:
+            single_entity_dominance: true
+        - rule_id: "siem-rule-00388"
+          rule_name: "Successful Privilege Escalation via DCSync"
+          health_state: "healthy"
+          primary_concern: null
+        - rule_id: "siem-rule-00099"
+          rule_name: "AWS GuardDuty - Tor Activity"
+          health_state: "silent"
+          primary_concern: "Zero alerts in 60 days; data source is active"
+          priority_signals:
+            silent_with_active_data_source: true
+    expected:
+      schema_required_fields: [executive_summary, top_attention_items, portfolio_patterns, portfolio_metrics]
+      portfolio_patterns_must_identify:
+        # Three rules all dominated by build infra — should be one pattern, not three attention items
+        - pattern_about: "build infrastructure"
+          must_reference_rules: ["siem-rule-00421", "siem-rule-00422", "siem-rule-00423"]
+      top_attention_items_must_include_rule_ids:
+        - "siem-rule-00099"  # silent rule warrants attention
+      portfolio_metrics_arithmetic_check: true
+      must_not_invent:
+        - "siem-rule-77777"
+        - "production deployment incident"  # no incident referenced in input

@@ -344,7 +344,23 @@ Set a minimum accuracy threshold (e.g., 85% correct conclusions, 95% required ch
 
 **Do not replace analysts — augment them.** Position the agent as a force multiplier: it handles the first 80% of investigation work (data gathering, standard checks, evidence compilation), and the analyst handles the remaining 20% (judgment calls, edge cases, response decisions). The agent's report is a draft investigation that the analyst reviews, validates, and acts on — not a final determination that triggers automatic response.
 
-**Vendor landscape.** Multiple startups and established vendors are building agentic investigation capabilities: Prophet Security, Dropzone AI, Exaforce, Qevlar AI, Intezer, D3 Morpheus. Evaluate whether to build custom or adopt a vendor solution. Custom builds offer maximum control and integration with your specific tool stack. Vendor solutions offer faster time-to-value but may not integrate with all your tools or understand your environment-specific context.
+**Vendor landscape (2026).** Agentic investigation is the highest-volume vendor product area in AI-for-SOC and the area with the largest 2026 funding flows. Notable vendors and their 2026 differentiators:
+  - **Microsoft Defender XDR Security Analyst Agent** — multi-step investigations across Defender + Sentinel telemetry, with embedded Security Copilot Chat (April 2026). Free in E5 starting April 20, 2026.
+  - **Google SecOps Triage and Investigation Agent (TIN)** — public preview with free trial Apr 1 – Jun 30, 2026.
+  - **Palo Alto Cortex AgentiX Case Investigation Agent** — native MCP support, 1,000+ prebuilt integrations.
+  - **Splunk Triage / Guided Response / SOP Agents** — fleet of agents covering hypothesis-to-rule, runbook ingestion, and guided response (Alpha Mar 2026).
+  - **CrowdStrike Charlotte AI AgentWorks** — no-code agent builder ecosystem (RSAC 2026).
+  - **SentinelOne Purple AI Auto Investigations** — one-click investigations (GA Mar 2026).
+  - **Qevlar AI** — explicit "deterministic graph orchestration" anti-hallucination scaffolding; claims 99.8% accuracy.
+  - **Conifers CognitiveSOC** — transparent evidence-based investigations + governed AI operations (Gartner-named "company to beat").
+  - **Hunters Pathfinder Investigation Orchestration Agent** — closed-loop investigations.
+  - **Prophet Security, Dropzone AI, Intezer, D3 Morpheus** — established players continue to ship.
+  - **Andesite** — first FedRAMP High Authorized agentic SOC vendor (Mar 2026).
+  - **Tracecat** — open-source AI-native SOAR with sandboxed agent runtime (build-vs-buy alternative for teams wanting to own the agent harness).
+
+Build-vs-buy: vendor-native is the right call for single-platform environments and teams without dedicated AI/ML engineering capacity. UC-14 here remains valuable for multi-platform / vendor-neutral environments and for teams needing transparent reasoning paths, customizable safety policies, and full audit-trail control. The deterministic-graph-orchestration pattern (Qevlar) is the strongest current technique for limiting hallucination risk in agentic investigations and worth adopting regardless of build-vs-buy direction. See [vendor-landscape.md](../../references/vendor-landscape.md) for full Q1-Q2 2026 details and [2026-q1q2-research-review.md](../../docs/2026-q1q2-research-review.md) for the synthesized analysis.
+
+**Adversarial threat model is acute.** Agentic investigation has the broadest attack surface of any use case in this catalog: alert payloads (prompt injection — Attack 1), web-fetched threat intel content (indirect injection — Attack 2), tool abuse via crafted reasoning context (Attack 7), system prompt extraction via investigation queries (Attack 6), and capacity DoS via crafted alerts that drive long investigations (Attack 5). Apply every control in [adversarial-ai-considerations.md](../../concepts/adversarial-ai-considerations.md) — especially tool allow-lists with parameter constraints, hard tool-call caps, and read-only-by-default posture.
 
 ## Related Use Cases
 
@@ -354,17 +370,29 @@ Set a minimum accuracy threshold (e.g., 85% correct conclusions, 95% required ch
 - [UC-15: LLM Investigation Guide Generation](../rule-content-engineering/15-llm-investigation-guide-generation.md) — Produces the investigation guides that the agent follows. Quality of guides directly impacts quality of investigations.
 - [UC-20: Analyst Workflow Optimization](../strategic/20-analyst-workflow-optimization.md) — Agent investigation logs provide rich data for analyzing investigation patterns and optimizing workflows.
 - [UC-22: Detection Program Health Reporting](../strategic/22-detection-program-health-reporting.md) — Agent investigation outcomes (TP/FP conclusions, investigation duration, escalation rates) feed into program health metrics.
+- [UC-25: AI Agent & MCP Activity Detection](../rule-content-engineering/25-ai-agent-mcp-detection.md) — UC-14 IS one of the AI agents UC-25 detects on. Apply the same governance and telemetry to UC-14's own activity.
+- [Adversarial AI Considerations](../../concepts/adversarial-ai-considerations.md) — Required reading for UC-14 specifically.
+- [Validation Harness](../../concepts/validation-harness.md) — Agentic eval methodology (golden investigations).
 
 ## References
 
 - Yao et al., "ReAct: Synergizing Reasoning and Acting in Language Models" (2022) — Foundational paper on the ReAct pattern used for agentic tool use
-- Anthropic, "Tool Use (Function Calling)" — API reference for building tool-using agents with Claude
-- OpenAI, "Function Calling and Agents" — API reference for building tool-using agents with GPT models
-- LangChain, "Agents" — Framework for building ReAct-style agents with tool use
-- LangGraph — Framework for building stateful, multi-step agent workflows with explicit control flow
-- Anthropic, "Building Effective Agents" (2024) — Best practices for agentic LLM system design
-- OWASP, "Agentic AI Threats and Mitigations" (2025) — Security considerations for agentic AI systems, including tool poisoning and prompt injection risks
-- Anton Chuvakin, "Beyond 'Is Your SOC AI Ready?' Plan the Journey!" (January 2026) — Framework for maturity-based AI deployment in SOCs
-- Prophet Security — Commercial agentic SOC investigation platform
-- Dropzone AI — Commercial autonomous SOC analysis platform
+- Anthropic, [Tool Use (Function Calling)](https://docs.anthropic.com/en/docs/build-with-claude/tool-use) — API reference for building tool-using agents with Claude
+- Anthropic, [Model Context Protocol](https://modelcontextprotocol.io/) — Standard interface for agent tooling (table-stakes in 2026)
+- Anthropic, [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) (2024) — Best practices for agentic LLM system design
+- OpenAI, [Function Calling and Agents Guide](https://platform.openai.com/docs/guides/function-calling)
+- LangGraph, [Stateful Multi-Step Agent Workflows](https://www.langchain.com/langgraph)
+- OWASP, [Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) — Authoritative threat catalog
+- MITRE ATLAS, [v5.4.0 Agentic AI Techniques](https://atlas.mitre.org/) — Including AML.T0096 AI Service API as C2
+- Anton Chuvakin, ["Beyond 'Is Your SOC AI Ready?'"](https://medium.com/anton-on-security/beyond-is-your-soc-ai-ready-plan-the-journey-c9654a9ee175) (Jan 2026)
+- Anton Chuvakin, ["RSA 2026: Agentic Future, Analog Fundamentals"](https://medium.com/anton-on-security/rsa-2026-agentic-future-analog-fundamentals-the-paradox-of-why-the-old-guard-still-survives-bf93e81eaaa6) (Apr 2026)
+- arXiv, [CORTEX — Multi-Agent Collaborative LLMs for Alert Triage (2510.00311)](https://arxiv.org/html/2510.00311v1)
+- Microsoft, [Sentinel MCP Server Documentation](https://learn.microsoft.com/en-us/azure/sentinel/datalake/sentinel-mcp-overview)
+- Qevlar AI, [Deterministic Graph Orchestration](https://www.qevlar.com) — Anti-hallucination architecture pattern reference
+- Hunters Security, [Pathfinder AI Investigation Orchestration](https://www.hunters.security/en/blog/pathfinder-ai-part-2)
+- Microsoft Defender, [Security Analyst Agent](https://techcommunity.microsoft.com/blog/microsoftthreatprotectionblog/security-copilot-in-defender-empowering-the-soc-with-assistive-and-autonomous-ai/4503047)
+- Prophet Security, [Platform — autonomous defenders](https://www.prophetsecurity.ai/platform)
+- Dropzone AI, [Agentic SOC Platform](https://www.dropzone.ai/blog/announcing-the-agentic-soc)
+- D3 Security, [Morpheus — Purpose-Built Cybersecurity LLM](https://d3security.com/morpheus/)
+- Tracecat, [Open-Source AI-Native SOAR](https://github.com/TracecatHQ/tracecat) — Build-vs-buy alternative
 - Exaforce — Commercial AI SOC analyst platform

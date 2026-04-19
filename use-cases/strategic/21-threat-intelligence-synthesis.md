@@ -4,6 +4,8 @@
 
 Strategic
 
+> **Scope note**: UC-21 is the bridge use case between detection engineering and the broader **AI for Threat Intelligence** category that is deferred to a future companion repository. This use case covers the *detection-engineering-relevant* slice of CTI synthesis — turning CTI into detection content gap analysis and work orders. Full CTI use cases (IOC extraction at scale, actor profiling, infrastructure pivoting, victimology, dark-web monitoring synthesis, attribution reasoning) belong in the future `ai-for-threat-intelligence` repo. Treat this UC as the bridge artifact.
+
 ## Summary
 
 Reads natural-language cyber threat intelligence (CTI) reports, extracts the tactics, techniques, and procedures (TTPs) described, maps them to MITRE ATT&CK, compares the extracted techniques against the organization's current detection posture, and generates an actionable brief with prioritized detection engineering work orders for coverage gaps. This is one of the highest-value LLM applications in detection engineering because the input (prose reports) and the output (prioritized action items) both require natural language reasoning that deterministic tooling cannot perform.
@@ -184,6 +186,10 @@ encrypted channels.
 - **Work order realism.** LLM-generated work orders may suggest detections for data sources that your environment doesn't collect. Include data source availability as an input so the system can flag "this detection requires Sysmon Event ID 10, which is not currently collected in your environment" rather than generating an infeasible work order.
 - **Organizational workflow integration.** The output is most useful when it integrates directly into the detection engineering backlog (Jira, GitHub Issues, etc.). Consider templating the work orders in your ticket system's format.
 - **Volume management.** A busy threat intel team may process 10-20 reports per week. Not every report warrants full synthesis. Establish criteria for which reports trigger the full pipeline vs. a lightweight TTP extraction only.
+
+- **CTI source poisoning is a real adversarial pressure**: An attacker who can publish to or compromise a CTI source you trust can inject misleading TTPs designed to redirect your detection-engineering attention or to trigger detections on benign infrastructure. See [adversarial-ai-considerations.md](../../concepts/adversarial-ai-considerations.md) Attack 8 (Threat-Intel Poisoning). Mitigations: maintain a source-trust tier; require multi-source corroboration for recommendations acted on; never auto-deploy detections from CTI synthesis (UC-21 produces backlog items, not deployments).
+
+- **2026 vendor implementations exist**: CardinalOps TI-Ops shipped agentic exposure-management workflows that map CTI to coverage gaps. Microsoft's CTI-REALM benchmark (Mar 2026) provides a public eval methodology for end-to-end CTI-to-rule pipelines. SOC Prime Uncoder AI v2 includes CTI enrichment and IOC-to-query conversion. Build-vs-buy applies as with other UCs: vendor-native is convenient if in-stack; UC-21 here remains valuable for environments needing transparent reasoning chains and integration with custom posture-scoring outputs.
 
 ## Related Use Cases
 
