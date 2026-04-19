@@ -1,6 +1,6 @@
 # Reading List
 
-Key industry resources for AI-assisted detection engineering and SOC operations. **Refreshed April 2026** — see [docs/2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md) for the synthesized landscape.
+Key industry resources for AI-assisted detection engineering and SOC operations. **Refreshed April 2026.**
 
 ---
 
@@ -131,7 +131,7 @@ These represent vendor viewpoints — read critically, but they contain useful a
 
 | Event | Notes |
 |---|---|
-| **RSA Conference 2026** (Mar–Apr 2026) | Largest single source of 2026 AI SOC product announcements. See [docs/2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md) for synthesis. |
+| **RSA Conference 2026** (Mar–Apr 2026) | Largest single source of 2026 AI SOC product announcements. |
 | **DEATHCon 2026** | Detection Engineering and Threat Hunting Conference. Practitioner-focused. [deathcon.io](https://deathcon.io/) |
 | **SANS SEC598 — AI and Security Automation for Red, Blue, Purple Teams** | Detection-engineering pedagogy for continuous validation. Anchor reference for [UC-26](../use-cases/rule-content-engineering/26-continuous-detection-validation.md). [sans.org](https://www.sans.org/cyber-security-courses/ai-security-automation) |
 | **Black Hat / DEF CON 2026** | Standard tracks; check schedules for AI-focused content. |
@@ -143,7 +143,6 @@ These represent vendor viewpoints — read critically, but they contain useful a
 ## How to Use This List
 
 - **Starting point**: Begin with the two Anton Chuvakin posts. They frame the entire problem space.
-- **For 2026 landscape**: Read [2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md) before going deeper into vendor materials.
 - **For prerequisites**: OWASP Top 10 + NIST AI RMF + NIST IR 8596 address risk and governance.
 - **For detection engineering**: Sigma specification, Elastic detection rules docs, ECS/CIM/ASIM references are the operational foundations.
 - **For alert correlation and risk-based alerting**: Start with the Splunk RBA Guide, then [Alert Correlation Patterns](../concepts/alert-correlation-patterns.md) for the cross-platform synthesis.

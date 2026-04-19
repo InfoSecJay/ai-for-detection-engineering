@@ -2,7 +2,7 @@
 
 Commercial products and platforms relevant to AI-assisted detection engineering and SOC operations. Inclusion is not endorsement. This page exists to map the landscape, not recommend products.
 
-**Last refreshed: April 2026** with the Q1–Q2 2026 announcements detailed in [docs/2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md). The vendor landscape moves faster than this document — refresh quarterly.
+**Last refreshed: April 2026** with Q1–Q2 2026 announcements. The vendor landscape moves faster than this document — refresh quarterly.
 
 ---
 
@@ -88,7 +88,7 @@ Platforms combining threat intelligence with AI/ML for detection and analysis. N
 
 ## Frameworks & Standards
 
-Industry frameworks relevant to AI in security operations. Major 2026 updates documented in [docs/2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md).
+Industry frameworks relevant to AI in security operations.
 
 | Framework | 2026 Status | Link |
 |---|---|---|
@@ -126,7 +126,7 @@ How major platforms implement alert correlation, risk scoring, and multi-signal 
 
 ## 2026 Cross-Platform Themes
 
-These trends are universal across the categories above, documented in [docs/2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md):
+These trends are universal across the categories above:
 
 1. **MCP is now table-stakes.** Every major vendor ships at least one MCP server or MCP-aware capability in Q1–Q2 2026.
 2. **Closed-loop detection engineering is being productized.** Triage outcomes auto-tune rules at vendors including Hunters, Prophet, Intezer, LimaCharlie.

@@ -1,5 +1,7 @@
-# Internal project files
+# Internal project files (planning, research, work-tracking)
 docs/project-prompt.md
+docs/2026-q1q2-research-review.md
+correlation-rules/TODO.md
 
 # Claude Code
 .claude/

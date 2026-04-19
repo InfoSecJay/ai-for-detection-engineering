@@ -14,7 +14,7 @@ A phased adoption plan for the 23 use cases in this repository, organized by SOC
 
 This is a recommended sequence, not a mandate. Local constraints (vendor contracts, regulatory scope, available data sources) will reorder some steps.
 
-The roadmap covers all **31 use cases** in the catalog: the original 23 plus the eight 2026 additions (UC-24 through UC-31) introduced in [docs/2026-q1q2-research-review.md](2026-q1q2-research-review.md).
+The roadmap covers all **31 use cases** in the catalog.
 
 ---
 

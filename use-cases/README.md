@@ -2,8 +2,6 @@
 
 This directory contains **31 documented use cases** for applying AI and machine learning to detection engineering and SOC operations. Each use case is a detailed write-up covering what AI actually does, what the SIEM/SOAR should already handle, required data inputs, architecture patterns, and implementation guidance.
 
-The original 23 (UC-01 through UC-23) constitute the foundational catalog. Use cases UC-24 through UC-31 were added April 2026 based on the [Q1–Q2 2026 research review](../docs/2026-q1q2-research-review.md), reflecting the state of the field as of that date.
-
 ## Categorization
 
 Use cases are organized into five categories based on what they operate on and who they serve:

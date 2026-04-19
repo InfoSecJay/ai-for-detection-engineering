@@ -1,6 +1,6 @@
 # Identity Resolution Pattern
 
-A reference design for the `lookup-identity-resolution` index that powers cross-domain correlation when entities use different naming conventions across data sources. This document fixes the **CORR-5E blind spot** called out in [TODO.md](TODO.md): email and endpoint domains use incompatible `user.name` formats and the rule produces silent false negatives without normalization.
+A reference design for the `lookup-identity-resolution` index that powers cross-domain correlation when entities use different naming conventions across data sources. This document addresses the **CORR-5E blind spot**: email and endpoint domains use incompatible `user.name` formats and the rule produces silent false negatives without normalization.
 
 The pattern generalizes beyond CORR-5E. Any cross-domain rule joining on `user.name`, `user.email`, or `user.id` benefits from a shared identity-resolution lookup.
 

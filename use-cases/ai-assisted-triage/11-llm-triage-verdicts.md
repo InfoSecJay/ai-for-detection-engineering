@@ -201,7 +201,7 @@ Alert fires → SOAR playbook runs enrichment steps → context package assemble
 - arXiv, [CORTEX — Collaborative LLM Agents for Alert Triage (2510.00311)](https://arxiv.org/html/2510.00311v1) — Multi-agent triage architecture
 - arXiv, [CyberSOCEval Benchmark (2509.20166)](https://arxiv.org/html/2509.20166v2)
 - Mandiant, [M-Trends 2026](https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026) — PROMPTFLUX/PROMPTSTEAL adversarial-AI patterns
-- CrowdStrike, [Charlotte AI Detection Triage](https://ir.crowdstrike.com/news-releases/news-release-details/crowdstrike-delivers-next-breakthrough-ai-powered-agentic) — Vendor reference (98% claim — see [research review](../../docs/2026-q1q2-research-review.md))
+- CrowdStrike, [Charlotte AI Detection Triage](https://ir.crowdstrike.com/news-releases/news-release-details/crowdstrike-delivers-next-breakthrough-ai-powered-agentic) — Vendor reference (98% accuracy claim — treat with measured skepticism; vendor accuracy claims should be validated against your environment via the [validation harness](../../concepts/validation-harness.md) golden set)
 - Hunters Security, [Pathfinder AI](https://www.hunters.security/pathfinder-ai) — Vendor reference for closed-loop triage
 - Microsoft Defender, [Security Analyst Agent](https://techcommunity.microsoft.com/blog/microsoftthreatprotectionblog/security-copilot-in-defender-empowering-the-soc-with-assistive-and-autonomous-ai/4503047) — Vendor reference
 - Dropzone AI, [Agentic SOC Platform](https://www.dropzone.ai/blog/announcing-the-agentic-soc) — Vendor reference

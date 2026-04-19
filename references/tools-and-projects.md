@@ -1,6 +1,6 @@
 # Tools & Projects
 
-Open source tools and projects relevant to AI-assisted detection engineering, organized by category. **Refreshed April 2026** — see [docs/2026-q1q2-research-review.md](../docs/2026-q1q2-research-review.md) for the synthesized landscape view.
+Open source tools and projects relevant to AI-assisted detection engineering, organized by category. **Refreshed April 2026.**
 
 ---
 

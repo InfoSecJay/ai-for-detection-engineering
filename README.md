@@ -54,8 +54,6 @@ AI use cases in detection engineering depend on mature foundational capabilities
 
 **31 documented use cases** organized by category. Each links to a detailed write-up covering what AI actually does, required data inputs, architecture patterns, and implementation guidance.
 
-The original 23 (UC-01 through UC-23) constitute the foundational catalog. Use cases UC-24 through UC-31 were added April 2026 based on the [Q1–Q2 2026 research review](docs/2026-q1q2-research-review.md), reflecting state-of-the-field as of that date.
-
 ### Alert Analysis
 
 | # | Use Case | What AI Actually Does | Primary Data Input | Complexity |
@@ -161,7 +159,6 @@ Documentation that turns the use cases above from designs into operating systems
 | [Cost Models](docs/cost-models.md) | Per-use-case token economics at current Claude / GPT pricing, total cost envelopes by SOC size, cost levers (caching, model tiering, on-prem breakeven), budget template |
 | [Privacy and Data Handling](docs/privacy-and-data-handling.md) | What leaves your environment per use case, redaction patterns, vendor/region considerations, when to insource inference, per-use-case recommended posture |
 | [Governance Mapping](docs/governance-mapping.md) | NIST IR 8596 Cyber AI Profile mapping for detection engineering, NIST 800-53 COSAiS overlays, CSA AICM, EU AI Act Article 15 (Aug 2026 enforcement), ISO 42001, the six artifact set per use case to satisfy audit |
-| [2026 Q1–Q2 Research Review](docs/2026-q1q2-research-review.md) | Landscape review of vendor announcements, framework updates (MITRE ATT&CK v18, ATLAS v5.4.0, OWASP Agentic Top 10), and academic research (CTI-REALM, AIDR, FedGraph-AGI). Justifies the UC-24–UC-31 additions and informs build-vs-buy decisions. |
 
 ## Examples
 
